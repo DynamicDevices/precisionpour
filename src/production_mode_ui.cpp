@@ -380,19 +380,33 @@ void production_mode_update() {
         lv_obj_invalidate(wifi_bar4);
     }
     
-    // Update communication activity icon
-    if (comm_status_container != NULL && comm_arrow_up != NULL && comm_arrow_down != NULL) {
+    // Update communication activity icon (electric pulse/spark)
+    if (comm_status_container != NULL && comm_spark1 != NULL && comm_spark2 != NULL && comm_spark3 != NULL) {
         bool has_activity = mqtt_client_has_activity();
         
         // Update icon color: Green when active, Gray when idle
         lv_color_t comm_color = has_activity ? lv_color_hex(0x00FF00) : lv_color_hex(0x808080);
         
-        lv_obj_set_style_bg_color(comm_arrow_up, comm_color, 0);
-        lv_obj_set_style_bg_color(comm_arrow_down, comm_color, 0);
+        // Update all spark elements
+        lv_obj_set_style_bg_color(comm_spark1, comm_color, 0);
+        lv_obj_set_style_bg_color(comm_spark2, comm_color, 0);
+        lv_obj_set_style_bg_color(comm_spark3, comm_color, 0);
+        
+        // When active, make the center spark brighter/more prominent
+        if (has_activity) {
+            lv_obj_set_style_opa(comm_spark1, LV_OPA_80, 0);  // Slightly dimmed
+            lv_obj_set_style_opa(comm_spark2, LV_OPA_COVER, 0);  // Full brightness (main pulse)
+            lv_obj_set_style_opa(comm_spark3, LV_OPA_80, 0);  // Slightly dimmed
+        } else {
+            lv_obj_set_style_opa(comm_spark1, LV_OPA_30, 0);  // Dimmed when idle
+            lv_obj_set_style_opa(comm_spark2, LV_OPA_30, 0);  // Dimmed when idle
+            lv_obj_set_style_opa(comm_spark3, LV_OPA_30, 0);  // Dimmed when idle
+        }
         
         // Force redraw
-        lv_obj_invalidate(comm_arrow_up);
-        lv_obj_invalidate(comm_arrow_down);
+        lv_obj_invalidate(comm_spark1);
+        lv_obj_invalidate(comm_spark2);
+        lv_obj_invalidate(comm_spark3);
     }
     
     // Update other UI elements as needed
