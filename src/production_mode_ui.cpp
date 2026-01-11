@@ -11,6 +11,7 @@
 #include <string.h>
 #include "esp_efuse.h"
 #include "esp_system.h"
+#include "wifi_manager.h"
 // Use the logo image (extracted from splashscreen)
 #include "images/precision_pour_logo.h"
 
@@ -18,6 +19,7 @@
 static lv_obj_t *logo_container = NULL;
 static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
+static lv_obj_t *wifi_status_icon = NULL;  // WiFi connection status icon
 
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x161716) // Background color from logo image (RGB 22,23,22)
@@ -96,6 +98,24 @@ void production_mode_init() {
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_timer_handler();
     delay(5);
+    
+    // Create WiFi status icon in top left corner
+    Serial.println("[Production UI] Creating WiFi status icon...");
+    wifi_status_icon = lv_obj_create(lv_scr_act());
+    if (wifi_status_icon != NULL) {
+        // Small icon container (20x20 pixels)
+        lv_obj_set_size(wifi_status_icon, 20, 20);
+        lv_obj_align(wifi_status_icon, LV_ALIGN_TOP_LEFT, 5, 5);
+        lv_obj_set_style_bg_opa(wifi_status_icon, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_width(wifi_status_icon, 0, 0);
+        lv_obj_set_style_radius(wifi_status_icon, 10, 0);  // Circular icon
+        
+        // Initially set to disconnected (red)
+        lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0xFF0000), 0);
+        
+        Serial.println("[Production UI] WiFi status icon created");
+    }
+    lv_timer_handler();
     
     // Create logo area at the top using the splashscreen logo image
     Serial.println("[Production UI] Creating logo from image...");
@@ -225,7 +245,25 @@ void production_mode_init() {
 }
 
 void production_mode_update() {
-    // Update UI elements as needed
+    // Update WiFi status icon
+    if (wifi_status_icon != NULL) {
+        bool wifi_connected = wifi_manager_is_connected();
+        
+        // Update icon color based on connection status
+        // Green = connected, Red = disconnected/problem
+        static bool last_wifi_state = false;
+        if (wifi_connected != last_wifi_state) {
+            if (wifi_connected) {
+                lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0x00FF00), 0);  // Green
+            } else {
+                lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0xFF0000), 0);  // Red
+            }
+            last_wifi_state = wifi_connected;
+            lv_obj_invalidate(wifi_status_icon);  // Force redraw
+        }
+    }
+    
+    // Update other UI elements as needed
     // - Update flow meter readings
     // - Update RFID tag status
     // - Update pour status

@@ -189,6 +189,14 @@ void loop() {
     // Handle LVGL tasks (should be called every few milliseconds)
     lv_timer_handler();
     
+    // WiFi connection maintenance
+    wifi_manager_loop();
+    
+    // MQTT connection maintenance (only if WiFi is connected)
+    if (wifi_manager_is_connected()) {
+        mqtt_client_loop();
+    }
+    
     // Update UI based on mode
     #if TEST_MODE
         test_mode_update();
