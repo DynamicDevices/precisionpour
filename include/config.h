@@ -52,6 +52,10 @@
 #define MQTT_CLIENT_ID_PREFIX "precisionpour" // Prefix for MQTT client ID
 #define MQTT_TOPIC_PREFIX "precisionpour"     // Prefix for MQTT topics
 #define MQTT_RECONNECT_DELAY 5000            // Delay between MQTT reconnection attempts (ms)
+// MQTT_KEEPALIVE: Undefine library default (15) and set our own (60 seconds)
+#ifdef MQTT_KEEPALIVE
+#undef MQTT_KEEPALIVE
+#endif
 #define MQTT_KEEPALIVE 60                    // MQTT keepalive interval (seconds)
 
 // Wokwi simulator workaround
