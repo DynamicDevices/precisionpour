@@ -192,14 +192,38 @@ void splashscreen_set_status(const char *text) {
 }
 
 void splashscreen_remove() {
+    Serial.println("[Splashscreen] Removing splashscreen elements...");
+    
+    // Remove progress bar FIRST (before logo) so it disappears first
+    if (progress_bar != NULL) {
+        Serial.println("[Splashscreen] Removing progress bar...");
+        lv_obj_del(progress_bar);
+        progress_bar = NULL;
+        lv_timer_handler();
+        delay(10);  // Small delay to ensure progress bar is removed
+    }
+    
+    // Remove status label
+    if (status_label != NULL) {
+        lv_obj_del(status_label);
+        status_label = NULL;
+    }
+    
+    // Remove logo/image LAST (or at the same time)
     if (splashscreen_img != NULL) {
+        Serial.println("[Splashscreen] Removing logo...");
         lv_obj_del(splashscreen_img);
         splashscreen_img = NULL;
-        progress_bar = NULL;
-        status_label = NULL;
-        splashscreen_active = false;
-        Serial.println("Splashscreen removed");
     }
+    
+    splashscreen_active = false;
+    
+    // Process LVGL to update display
+    lv_timer_handler();
+    delay(10);
+    lv_timer_handler();
+    
+    Serial.println("[Splashscreen] Splashscreen removed");
 }
 
 bool splashscreen_is_active() {
