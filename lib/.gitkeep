@@ -1,0 +1,5 @@
+# Custom Libraries
+# 
+# Place custom library code here that is not available via PlatformIO's
+# library manager. PlatformIO will automatically include files in this
+# directory in the build.

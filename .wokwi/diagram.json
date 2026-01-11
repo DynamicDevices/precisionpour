@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "author": "Precision Pour Project",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-tft-ili9341",
+      "id": "tft",
+      "top": 0,
+      "left": 300,
+      "attrs": {
+        "width": "320",
+        "height": "240"
+      }
+    },
+    {
+      "type": "wokwi-xpt2046",
+      "id": "touch",
+      "top": 300,
+      "left": 300,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:GPIO23", "tft:MOSI", "green", [ "h0" ] ],
+    [ "esp:GPIO19", "tft:MISO", "blue", [ "h0" ] ],
+    [ "esp:GPIO18", "tft:SCK", "yellow", [ "h0" ] ],
+    [ "esp:GPIO5", "tft:CS", "orange", [ "h0" ] ],
+    [ "esp:GPIO2", "tft:DC", "purple", [ "h0" ] ],
+    [ "esp:GPIO4", "tft:RST", "red", [ "h0" ] ],
+    [ "esp:GPIO15", "tft:LED", "white", [ "h0" ] ],
+    [ "esp:GPIO23", "touch:MOSI", "green", [ "h0" ] ],
+    [ "esp:GPIO19", "touch:MISO", "blue", [ "h0" ] ],
+    [ "esp:GPIO18", "touch:SCK", "yellow", [ "h0" ] ],
+    [ "esp:GPIO21", "touch:CS", "orange", [ "h0" ] ],
+    [ "esp:GPIO22", "touch:IRQ", "gray", [ "h0" ] ],
+    [ "esp:GND.1", "tft:GND", "black", [ "h0" ] ],
+    [ "esp:3V3", "tft:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "touch:GND", "black", [ "h0" ] ],
+    [ "esp:3V3", "touch:VCC", "red", [ "h0" ] ]
+  ]
+}

@@ -1,0 +1,10 @@
+# Filesystem Data Files
+# 
+# Files placed here will be uploaded to the ESP32's filesystem
+# (SPIFFS or LittleFS) when you run: pio run -t uploadfs
+# 
+# Useful for:
+# - Configuration files
+# - Web server assets
+# - Font files
+# - Images

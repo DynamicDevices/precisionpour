@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "author": "ESP32 Touchscreen Project",
+  "editor": "vscode",
+  "board": "ESP32 Dev Module",
+  "sketch": "src/main.cpp",
+  "libraries": [
+    "lvgl/lvgl@^8.4.0",
+    "bodmer/TFT_eSPI@^2.5.43"
+  ]
+}
