@@ -1,6 +1,6 @@
-# ESP32 Touchscreen Display Firmware
+# PrecisionPour ESP32 Firmware
 
-Firmware development workspace for ESP32-based touchscreen display.
+Firmware for ESP32-based touchscreen display system with flow meter monitoring, WiFi connectivity, and MQTT communication for the PrecisionPour beverage dispensing system.
 
 ## Development Environment Options
 
@@ -99,58 +99,150 @@ precisionpour/
 
 ## Hardware Configuration
 
-**Note:** Update the following based on your specific display model:
+### Display
+- Display driver: ILI9341 (320x240 TFT)
+- Touch controller: XPT2046 (SPI)
+- Pin connections defined in `include/config.h`
 
-- Display driver (ILI9341, ST7789, etc.)
-- Touch controller (XPT2046, FT6236, etc.)
-- Pin connections (SPI pins, touch pins, etc.)
-- Resolution and orientation
+### Flow Meter
+- **YF-S201 Hall Effect Flow Sensor**
+- Flow rate range: 1-30 L/min
+- Accuracy: ±10%
+- Pulses per liter: 450
+- Connected to GPIO 25 (interrupt-capable pin)
+- Wiring:
+  - Red wire → 5V
+  - Black wire → GND
+  - Yellow wire → GPIO 25
 
-## UI Framework: LVGL
+### Network Connectivity
+- WiFi connection with auto-reconnect
+- MQTT client for cloud communication
+- Device-specific MQTT topics based on ESP32 MAC address
 
-This project uses **LVGL (Light and Versatile Graphics Library)** for modern, professional UI development.
+## Features
 
-### Features
-- ✅ Modern widget-based UI framework
-- ✅ Touch input support
-- ✅ Smooth animations and transitions
-- ✅ Low memory footprint
-- ✅ Hardware-accelerated rendering
-- ✅ Extensive widget library
+### UI Framework: LVGL
+- Modern widget-based UI framework
+- Touch input support
+- Smooth animations and transitions
+- Low memory footprint
+- Hardware-accelerated rendering
 
-### Project Structure with LVGL
+### Production Mode UI
+- PrecisionPour branded splashscreen with progress bar
+- QR code for payment (device-specific URL)
+- WiFi connection status icon (bottom left)
+- Communication activity icon (bottom right)
+- Logo and branding
+
+### Flow Meter Integration
+- Real-time flow rate measurement (L/min)
+- Total volume tracking (liters)
+- Interrupt-based pulse counting
+- Automatic flow detection
+
+### Network Features
+- WiFi connection with auto-reconnect
+- MQTT client for cloud communication
+- Device-specific MQTT topics
+- Activity monitoring and status indicators
+
+### Project Structure
 
 ```
 precisionpour/
 ├── src/
-│   ├── main.cpp           # LVGL initialization and main loop
-│   ├── lvgl_display.cpp    # Display driver integration
-│   ├── lvgl_touch.cpp     # Touch controller integration
-│   └── ui.cpp             # UI creation and management
+│   ├── main.cpp              # Main firmware entry point
+│   ├── lvgl_display.cpp      # Display driver integration
+│   ├── lvgl_touch.cpp        # Touch controller integration
+│   ├── splashscreen.cpp      # Splashscreen with progress bar
+│   ├── production_mode_ui.cpp # Production UI implementation
+│   ├── test_mode_ui.cpp      # Test mode UI
+│   ├── wifi_manager.cpp      # WiFi connection management
+│   ├── mqtt_client.cpp       # MQTT client implementation
+│   └── flow_meter.cpp        # Flow meter reading and calculations
 ├── include/
-│   ├── lv_conf.h          # LVGL configuration
-│   ├── lvgl_display.h     # Display driver interface
-│   ├── lvgl_touch.h       # Touch driver interface
-│   └── ui.h               # UI interface
+│   ├── config.h              # Hardware pin definitions
+│   ├── lv_conf.h            # LVGL configuration
+│   ├── lvgl_display.h       # Display driver interface
+│   ├── lvgl_touch.h         # Touch driver interface
+│   ├── splashscreen.h       # Splashscreen interface
+│   ├── production_mode_ui.h # Production UI interface
+│   ├── wifi_manager.h       # WiFi manager interface
+│   ├── mqtt_client.h        # MQTT client interface
+│   ├── flow_meter.h         # Flow meter interface
+│   └── secrets.h            # WiFi/MQTT credentials (gitignored)
 └── lib/
-    └── TFT_eSPI_Config/   # TFT_eSPI display configuration
+    └── TFT_eSPI_Config/     # TFT_eSPI display configuration
         └── User_Setup.h
 ```
 
 ## Quick Start
 
 1. **Install PlatformIO**: See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
-2. **Configure Hardware**: Update `include/config.h` with your display pins
-3. **Add Libraries**: Uncomment libraries in `platformio.ini` based on your display
+2. **Configure Credentials**: Copy `include/secrets.h.example` to `include/secrets.h` and add your WiFi/MQTT credentials
+3. **Hardware Setup**: Connect display, touch, and flow meter according to pin definitions in `include/config.h`
 4. **Build & Upload**: Use PlatformIO commands (see [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md))
 
-## Next Steps
+## Configuration
 
-1. Identify your display model and specifications
-2. Update pin definitions in `include/config.h`
-3. Choose and configure the appropriate graphics library in `platformio.ini`
-4. Implement display and touch drivers using the interfaces in `include/`
-5. Start developing your UI!
+### WiFi and MQTT Setup
+1. Copy `include/secrets.h.example` to `include/secrets.h`
+2. Edit `include/secrets.h` and add your credentials:
+   ```cpp
+   #define WIFI_SSID "YourWiFiNetwork"
+   #define WIFI_PASSWORD "YourPassword"
+   #define MQTT_SERVER "mqtt.example.com"
+   ```
+3. The `secrets.h` file is gitignored and will not be committed
+
+### Operating Modes
+- **Production Mode** (`TEST_MODE = 0`): PrecisionPour branded UI with QR code
+- **Test Mode** (`TEST_MODE = 1`): Hardware testing interface
+
+Set in `include/config.h`:
+```cpp
+#define TEST_MODE 0  // 0 = Production, 1 = Test
+```
+
+## API Usage
+
+### Flow Meter
+```cpp
+// Get current flow rate
+float flow_rate = flow_meter_get_flow_rate_lpm();  // Liters per minute
+
+// Get total volume
+float volume = flow_meter_get_total_volume_liters();  // Total liters
+
+// Reset volume counter
+flow_meter_reset_volume();
+```
+
+### WiFi
+```cpp
+// Check connection status
+bool connected = wifi_manager_is_connected();
+
+// Get IP address
+String ip = wifi_manager_get_ip();
+
+// Get MAC address
+String mac = wifi_manager_get_mac_address();
+```
+
+### MQTT
+```cpp
+// Publish message
+mqtt_client_publish("topic", "message");
+
+// Check connection
+bool connected = mqtt_client_is_connected();
+
+// Check for activity
+bool active = mqtt_client_has_activity();
+```
 
 ## Documentation
 

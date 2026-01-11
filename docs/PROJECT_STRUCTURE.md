@@ -15,15 +15,35 @@ precisionpour/
 ├── README.md              # Main project documentation
 │
 ├── src/                   # Source Files
-│   └── main.cpp           # Main firmware entry point
+│   ├── main.cpp           # Main firmware entry point
+│   ├── lvgl_display.cpp   # LVGL display driver
+│   ├── lvgl_touch.cpp     # LVGL touch driver
+│   ├── splashscreen.cpp   # Splashscreen implementation
+│   ├── production_mode_ui.cpp  # Production mode UI
+│   ├── test_mode_ui.cpp   # Test mode UI
+│   ├── wifi_manager.cpp   # WiFi connection management
+│   ├── mqtt_client.cpp    # MQTT client implementation
+│   └── flow_meter.cpp     # Flow meter reading and calculations
 │
 ├── include/               # Header Files
 │   ├── config.h           # Hardware pin definitions and settings
-│   ├── display.h          # Display driver abstract interface
-│   └── touch.h            # Touch controller abstract interface
+│   ├── lvgl_display.h     # Display driver interface
+│   ├── lvgl_touch.h       # Touch driver interface
+│   ├── splashscreen.h     # Splashscreen interface
+│   ├── production_mode_ui.h  # Production UI interface
+│   ├── test_mode_ui.h     # Test mode UI interface
+│   ├── wifi_manager.h     # WiFi manager interface
+│   ├── mqtt_client.h      # MQTT client interface
+│   ├── flow_meter.h       # Flow meter interface
+│   ├── secrets.h          # WiFi/MQTT credentials (gitignored)
+│   └── secrets.h.example  # Credentials template
 │
 ├── lib/                   # Custom Libraries
-│   └── (custom library code here)
+│   └── TFT_eSPI_Config/   # TFT_eSPI display configuration
+│       └── User_Setup.h
+│
+├── resources/             # Resource Files
+│   └── images/            # Image files for conversion
 │
 ├── test/                  # Unit Tests
 │   └── (test files here)
