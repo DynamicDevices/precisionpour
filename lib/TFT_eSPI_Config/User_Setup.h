@@ -24,21 +24,21 @@
 // based on the rotation setting. We use setRotation(1) for landscape (320x240).
 // Do not define TFT_WIDTH/TFT_HEIGHT here to avoid redefinition warnings.
 
-// Pin definitions (from config.h)
-#define TFT_MOSI 23
-#define TFT_MISO 19
-#define TFT_SCLK 18
-#define TFT_CS   5
-#define TFT_DC   2
-#define TFT_RST  4
+// Pin definitions - 2.8" ESP32-32E Display pinout from lcdwiki.com
+#define TFT_MOSI 13  // TFT_SDA (Serial Data) - GPIO13
+#define TFT_MISO 12  // TFT_SDO (Serial Data Out) - GPIO12
+#define TFT_SCLK 14  // TFT_SCK (Serial Clock) - GPIO14
+#define TFT_CS   15  // TFT_CS (Chip Select) - GPIO15
+#define TFT_DC   2   // TFT_RS (Register Select) - GPIO2
+#define TFT_RST  4   // TFT_RST (Reset) - GPIO4
 
 // Backlight control
-#define TFT_BL   15
+#define TFT_BL   27  // TFT_BL (Backlight) - GPIO27
 #define TFT_BACKLIGHT_ON HIGH
 
 // Touch controller (XPT2046)
-#define TOUCH_CS 21
-#define TOUCH_IRQ 22  // Optional, but recommended
+#define TOUCH_CS 33  // T_CS (Touch Chip Select) - GPIO33
+#define TOUCH_IRQ 36 // T_IRQ (Touch Interrupt Request) - GPIO36
 
 // SPI frequency
 #define SPI_FREQUENCY  27000000

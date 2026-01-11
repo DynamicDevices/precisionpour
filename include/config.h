@@ -8,22 +8,22 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Display pins (SPI)
-#define TFT_MOSI 23
-#define TFT_MISO 19
-#define TFT_SCLK 18
-#define TFT_CS   5
-#define TFT_DC   2
-#define TFT_RST  4
-#define TFT_BL   15  // Backlight
+// Display pins (SPI) - 2.8" ESP32-32E Display pinout from lcdwiki.com
+#define TFT_MOSI 13  // TFT_SDA (Serial Data) - GPIO13
+#define TFT_MISO 12  // TFT_SDO (Serial Data Out) - GPIO12
+#define TFT_SCLK 14  // TFT_SCK (Serial Clock) - GPIO14
+#define TFT_CS   15  // TFT_CS (Chip Select) - GPIO15
+#define TFT_DC   2   // TFT_RS (Register Select) - GPIO2
+#define TFT_RST  4   // TFT_RST (Reset) - Connected to EN pin, using GPIO4
+#define TFT_BL   27  // TFT_BL (Backlight) - GPIO27
 
-// Touch pins (SPI or I2C - depends on your touch controller)
-#define TOUCH_CS 21
-#define TOUCH_IRQ 22  // Optional interrupt pin
+// Touch pins (XPT2046 resistive touchscreen)
+#define TOUCH_CS 33  // T_CS (Touch Chip Select) - GPIO33
+#define TOUCH_IRQ 36 // T_IRQ (Touch Interrupt Request) - GPIO36
 
-// I2C pins (if using I2C for touch)
-#define I2C_SDA 21
-#define I2C_SCL 22
+// I2C pins (not used for this display - touch uses SPI)
+// #define I2C_SDA 21
+// #define I2C_SCL 22
 
 // Display settings
 #define DISPLAY_WIDTH  320   // Update based on your display
@@ -62,6 +62,6 @@
 // Future hardware pins (placeholders for flow meter and RFID/NFC)
 #define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
 #define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select
-#define RFID_RST_PIN 27    // GPIO pin for RFID/NFC reset
+#define RFID_RST_PIN 32    // GPIO pin for RFID/NFC reset (changed from 27, which is now TFT_BL)
 
 #endif // CONFIG_H
