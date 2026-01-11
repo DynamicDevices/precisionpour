@@ -188,15 +188,7 @@ static void xpt2046_read_coords(int16_t *x, int16_t *y) {
 }
 
 void lvgl_touch_init() {
-    Serial.println("\n========================================");
-    Serial.println("=== INITIALIZING TOUCH CONTROLLER ===");
-    Serial.println("========================================");
-    
-    #ifdef WOKWI_SIMULATOR
-    Serial.println("[Touch] WOKWI_SIMULATOR is defined");
-    #else
-    Serial.println("[Touch] Running on real hardware");
-    #endif
+    Serial.println("[Touch] Initializing touch controller...");
     
     // Configure CS pin
     pinMode(TOUCH_CS, OUTPUT);
@@ -208,44 +200,14 @@ void lvgl_touch_init() {
     pinMode(TOUCH_MISO, INPUT);
     digitalWrite(TOUCH_SCLK, HIGH);  // Idle high for SPI mode 0
     
-    Serial.printf("[Touch] CS: %d, SCLK: %d, MOSI: %d, MISO: %d\r\n", 
-                  TOUCH_CS, TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
-    
     // Configure IRQ pin
     if (TOUCH_IRQ >= 0) {
         pinMode(TOUCH_IRQ, INPUT_PULLUP);
-        int irq_state = digitalRead(TOUCH_IRQ);
-        last_irq_state = irq_state;
-        Serial.printf("[Touch] IRQ pin: %d, initial state: %s\r\n", 
-                     TOUCH_IRQ, irq_state == HIGH ? "HIGH" : "LOW");
-        Serial.println("[Touch] IRQ goes LOW when touch is detected");
-        
+        last_irq_state = digitalRead(TOUCH_IRQ);
         attachInterrupt(digitalPinToInterrupt(TOUCH_IRQ), irq_handler, CHANGE);
-        Serial.println("[Touch] IRQ interrupt handler attached (CHANGE mode)");
-    } else {
-        Serial.println("[Touch] WARNING: IRQ pin not configured!");
     }
     
     delay(10);
-    
-    // Test SPI communication
-    Serial.println("[Touch] Testing SPI communication...");
-    for (int i = 0; i < 3; i++) {
-        uint16_t test_x = xpt2046_read(XPT2046_CMD_X);
-        uint16_t test_y = xpt2046_read(XPT2046_CMD_Y);
-        uint16_t test_z1 = xpt2046_read(XPT2046_CMD_Z1);
-        uint16_t test_z2 = xpt2046_read(XPT2046_CMD_Z2);
-        Serial.printf("[Touch] Test %d: X=%d Y=%d Z1=%d Z2=%d\r\n", 
-                     i+1, test_x, test_y, test_z1, test_z2);
-        delay(50);
-    }
-    
-    #ifdef WOKWI_SIMULATOR
-    if (wokwi_mode_detected) {
-        Serial.println("[Touch] *** WOKWI MODE: Using IRQ pin for touch detection ***");
-        Serial.println("[Touch] Click the display in Wokwi - IRQ pin should go LOW");
-    }
-    #endif
     
     // Register LVGL touch input device
     static lv_indev_drv_t indev_drv;
@@ -255,25 +217,14 @@ void lvgl_touch_init() {
     lv_indev_t *indev = lv_indev_drv_register(&indev_drv);
     
     if (indev != NULL) {
-        Serial.println("[Touch] SUCCESS: LVGL touch input device registered");
+        Serial.println("[Touch] Touch controller initialized");
     } else {
-        Serial.println("[Touch] ERROR: Failed to register LVGL touch input device!");
+        Serial.println("[Touch] ERROR: Failed to register touch input device!");
     }
-    
-    Serial.println("========================================\n");
 }
 
 void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-    static uint32_t call_count = 0;
-    static bool first_call = true;
     static bool last_pressed = false;
-    
-    call_count++;
-    
-    if (first_call) {
-        Serial.println("[Touch] lvgl_touch_read() called by LVGL");
-        first_call = false;
-    }
     
     bool pressed = false;
     bool irq_pressed = false;
@@ -283,20 +234,10 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     if (TOUCH_IRQ >= 0) {
         int irq_state = digitalRead(TOUCH_IRQ);
         irq_pressed = (irq_state == LOW);
+        last_irq_state = irq_state;
         
-        // Log IRQ state changes
-        if (irq_state != last_irq_state) {
-            Serial.printf("[Touch] *** IRQ CHANGED: %s -> %s (pin %d) ***\r\n",
-                         last_irq_state == HIGH ? "HIGH" : (last_irq_state == LOW ? "LOW" : "UNKNOWN"),
-                         irq_state == HIGH ? "HIGH" : "LOW",
-                         TOUCH_IRQ);
-            last_irq_state = irq_state;
-        }
-        
-        // Log interrupt triggers
+        // Clear interrupt flag
         if (irq_triggered) {
-            Serial.printf("[Touch] *** IRQ INTERRUPT! Count: %lu, State: %s ***\r\n",
-                         irq_trigger_count, irq_state == LOW ? "LOW" : "HIGH");
             irq_triggered = false;
         }
     }
@@ -312,14 +253,6 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     
     // Determine if touch is pressed
     pressed = irq_pressed || pressure_pressed;
-    
-    // Log state changes
-    if (pressed != last_pressed) {
-        Serial.printf("[Touch] State: %s (IRQ=%d Pressure=%d)\r\n",
-                     pressed ? "PRESSED" : "RELEASED",
-                     irq_pressed, pressure_pressed);
-        last_pressed = pressed;
-    }
     
     if (pressed) {
         int16_t x, y;
@@ -348,16 +281,14 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         touch_x = x;
         touch_y = y;
         touch_pressed = true;
-        
-        if (pressed != last_pressed) {
-            Serial.printf("[Touch] Coordinates: x=%d y=%d\r\n", x, y);
-        }
     } else {
         data->point.x = touch_x;
         data->point.y = touch_y;
         data->state = LV_INDEV_STATE_RELEASED;
         touch_pressed = false;
     }
+    
+    last_pressed = pressed;
 }
 
 void update_touch_state(int16_t x, int16_t y, bool pressed) {

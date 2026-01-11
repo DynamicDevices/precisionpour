@@ -209,45 +209,8 @@ void loop() {
         production_mode_update();
     #endif
     
-    // Continuous IRQ pin monitoring (every 100ms) to catch ANY state changes
-    static uint32_t last_irq_check = 0;
-    static int last_irq_state = -1;
-    uint32_t now = millis();
-    if (now - last_irq_check > 100) {
-        if (TOUCH_IRQ >= 0) {
-            int current_irq_state = digitalRead(TOUCH_IRQ);
-            if (current_irq_state != last_irq_state) {
-                Serial.printf("\n[Main Loop] *** IRQ PIN STATE CHANGED: %s -> %s (pin %d) ***\r\n",
-                            last_irq_state == HIGH ? "HIGH" : (last_irq_state == LOW ? "LOW" : "UNKNOWN"),
-                            current_irq_state == HIGH ? "HIGH" : "LOW",
-                            TOUCH_IRQ);
-                Serial.flush();
-                last_irq_state = current_irq_state;
-            }
-        }
-        last_irq_check = now;
-    }
-    
-    // Periodic touch controller test (every 3 seconds)
-    static uint32_t last_touch_test = 0;
-    if (now - last_touch_test > 3000) {
-        Serial.println("\n[Main Loop] Testing touch controller...");
-        
-        // Test IRQ pin
-        if (TOUCH_IRQ >= 0) {
-            int irq_state = digitalRead(TOUCH_IRQ);
-            Serial.printf("[Main Loop] IRQ pin state: %s (pin %d)\r\n", 
-                        irq_state == LOW ? "LOW" : "HIGH", TOUCH_IRQ);
-        }
-        
-        // Test SPI communication by reading raw values
-        // Note: This will conflict with LVGL's touch reading, but it's just for debugging
-        Serial.println("[Main Loop] Reading raw touch values via SPI...");
-        // We'll do a quick read to see if SPI is working
-        // (This is a simplified test - actual reading is in lvgl_touch.cpp)
-        
-        last_touch_test = now;
-    }
+    // Touch controller is handled by LVGL touch driver
+    // No need for continuous monitoring here
     
     // WiFi connection maintenance
     wifi_manager_loop();
