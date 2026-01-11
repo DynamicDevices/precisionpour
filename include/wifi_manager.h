@@ -15,5 +15,6 @@ bool wifi_manager_is_connected();
 void wifi_manager_loop();  // Call this in main loop for reconnection handling
 String wifi_manager_get_ip();
 String wifi_manager_get_mac_address();
+int wifi_manager_get_rssi();  // Get WiFi signal strength (RSSI in dBm)
 
 #endif // WIFI_MANAGER_H

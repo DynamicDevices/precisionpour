@@ -111,3 +111,10 @@ String wifi_manager_get_ip() {
 String wifi_manager_get_mac_address() {
     return WiFi.macAddress();
 }
+
+int wifi_manager_get_rssi() {
+    if (wifi_manager_is_connected()) {
+        return WiFi.RSSI();
+    }
+    return -100;  // Return very weak signal when not connected
+}
