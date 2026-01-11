@@ -14,11 +14,16 @@ static char mqtt_client_id[64] = {0};
 static char mqtt_subscribe_topic[128] = {0};
 static unsigned long last_reconnect_attempt = 0;
 static bool mqtt_connected = false;
+static unsigned long last_activity_time = 0;  // Track last TX/RX activity
+static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last TX/RX
 
 // MQTT callback function (can be set by user)
 static void (*user_callback)(char* topic, byte* payload, unsigned int length) = NULL;
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
+    // Mark activity (message received)
+    last_activity_time = millis();
+    
     // Null-terminate the payload
     char message[256] = {0};
     if (length < sizeof(message)) {
@@ -124,6 +129,8 @@ bool mqtt_client_publish(const char* topic, const char* payload) {
     
     bool result = mqtt_client.publish(topic, payload);
     if (result) {
+        // Mark activity (message sent)
+        last_activity_time = millis();
         Serial.printf("[MQTT] Published to %s: %s\r\n", topic, payload);
     } else {
         Serial.printf("[MQTT] Failed to publish to %s\r\n", topic);
@@ -139,11 +146,28 @@ bool mqtt_client_subscribe(const char* topic) {
     
     bool result = mqtt_client.subscribe(topic);
     if (result) {
+        // Mark activity (subscription is a form of communication)
+        last_activity_time = millis();
         Serial.printf("[MQTT] Subscribed to: %s\r\n", topic);
     } else {
         Serial.printf("[MQTT] Failed to subscribe to: %s\r\n", topic);
     }
     return result;
+}
+
+bool mqtt_client_has_activity() {
+    // Return true if there was activity within the timeout period
+    if (last_activity_time == 0) {
+        return false;
+    }
+    unsigned long now = millis();
+    // Handle millis() overflow (happens every ~49 days)
+    if (now < last_activity_time) {
+        // Overflow occurred, reset
+        last_activity_time = 0;
+        return false;
+    }
+    return (now - last_activity_time) < ACTIVITY_TIMEOUT_MS;
 }
 
 void mqtt_client_set_callback(void (*callback)(char* topic, byte* payload, unsigned int length)) {

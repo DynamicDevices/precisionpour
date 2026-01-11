@@ -17,5 +17,6 @@ void mqtt_client_loop();  // Call this in main loop
 bool mqtt_client_publish(const char* topic, const char* payload);
 bool mqtt_client_subscribe(const char* topic);
 void mqtt_client_set_callback(void (*callback)(char* topic, byte* payload, unsigned int length));
+bool mqtt_client_has_activity();  // Returns true if there was recent TX/RX activity
 
 #endif // MQTT_CLIENT_H

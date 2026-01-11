@@ -12,6 +12,7 @@
 #include "esp_efuse.h"
 #include "esp_system.h"
 #include "wifi_manager.h"
+#include "mqtt_client.h"
 // Use the logo image (extracted from splashscreen)
 #include "images/precision_pour_logo.h"
 
@@ -25,6 +26,9 @@ static lv_obj_t *wifi_arc1 = NULL;  // WiFi signal arc 1 (innermost/smallest)
 static lv_obj_t *wifi_arc2 = NULL;  // WiFi signal arc 2
 static lv_obj_t *wifi_arc3 = NULL;  // WiFi signal arc 3
 static lv_obj_t *wifi_arc4 = NULL;  // WiFi signal arc 4 (outermost/largest)
+static lv_obj_t *comm_status_container = NULL;  // Communication activity icon container
+static lv_obj_t *comm_arrow_up = NULL;  // Upload/transmit arrow
+static lv_obj_t *comm_arrow_down = NULL;  // Download/receive arrow
 
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
@@ -289,6 +293,40 @@ void production_mode_init() {
     }
     lv_timer_handler();
     
+    // Create communication activity icon in bottom right corner
+    Serial.println("[Production UI] Creating communication activity icon...");
+    comm_status_container = lv_obj_create(lv_scr_act());
+    if (comm_status_container != NULL) {
+        // Container for communication icon (20x20 pixels)
+        lv_obj_set_size(comm_status_container, 20, 20);
+        lv_obj_align(comm_status_container, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+        lv_obj_set_style_bg_opa(comm_status_container, LV_OPA_TRANSP, 0);  // Transparent background
+        lv_obj_set_style_border_width(comm_status_container, 0, 0);
+        lv_obj_set_style_pad_all(comm_status_container, 0, 0);
+        lv_obj_clear_flag(comm_status_container, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // Create upload arrow (pointing up) - for transmit
+        comm_arrow_up = lv_obj_create(comm_status_container);
+        lv_obj_set_size(comm_arrow_up, 8, 6);
+        lv_obj_set_style_bg_opa(comm_arrow_up, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(comm_arrow_up, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
+        lv_obj_set_style_border_width(comm_arrow_up, 0, 0);
+        lv_obj_set_style_radius(comm_arrow_up, 1, 0);
+        lv_obj_align(comm_arrow_up, LV_ALIGN_TOP_MID, 0, 0);
+        
+        // Create download arrow (pointing down) - for receive
+        comm_arrow_down = lv_obj_create(comm_status_container);
+        lv_obj_set_size(comm_arrow_down, 8, 6);
+        lv_obj_set_style_bg_opa(comm_arrow_down, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(comm_arrow_down, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
+        lv_obj_set_style_border_width(comm_arrow_down, 0, 0);
+        lv_obj_set_style_radius(comm_arrow_down, 1, 0);
+        lv_obj_align(comm_arrow_down, LV_ALIGN_BOTTOM_MID, 0, 0);
+        
+        Serial.println("[Production UI] Communication activity icon created");
+    }
+    lv_timer_handler();
+    
     // Force refresh to show everything
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
@@ -350,6 +388,21 @@ void production_mode_update() {
         lv_obj_invalidate(wifi_arc2);
         lv_obj_invalidate(wifi_arc3);
         lv_obj_invalidate(wifi_arc4);
+    }
+    
+    // Update communication activity icon
+    if (comm_status_container != NULL && comm_arrow_up != NULL && comm_arrow_down != NULL) {
+        bool has_activity = mqtt_client_has_activity();
+        
+        // Update icon color: Green when active, Gray when idle
+        lv_color_t comm_color = has_activity ? lv_color_hex(0x00FF00) : lv_color_hex(0x808080);
+        
+        lv_obj_set_style_bg_color(comm_arrow_up, comm_color, 0);
+        lv_obj_set_style_bg_color(comm_arrow_down, comm_color, 0);
+        
+        // Force redraw
+        lv_obj_invalidate(comm_arrow_up);
+        lv_obj_invalidate(comm_arrow_down);
     }
     
     // Update other UI elements as needed
