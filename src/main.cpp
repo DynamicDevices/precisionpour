@@ -10,6 +10,8 @@
 #include "lvgl_display.h"
 #include "lvgl_touch.h"
 #include "splashscreen.h"
+#include "wifi_manager.h"
+#include "mqtt_client.h"
 #include <SPI.h>
 
 // Include mode-specific UI based on configuration
@@ -141,6 +143,40 @@ void setup() {
     Serial.println("SETUP COMPLETE!");
     Serial.println("========================================");
     Serial.flush();
+    
+    // Initialize WiFi connection
+    Serial.println("\n[Setup] Initializing WiFi...");
+    bool wifi_ok = wifi_manager_init();
+    if (wifi_ok) {
+        Serial.println("[Setup] WiFi initialized successfully");
+    } else {
+        Serial.println("[Setup] WiFi initialization failed, will retry in loop");
+    }
+    
+    // Get chip ID for MQTT (same method as production UI uses)
+    char chip_id[32] = {0};
+    uint8_t mac[6];
+    esp_err_t ret = esp_efuse_mac_get_default(mac);
+    if (ret == ESP_OK) {
+        snprintf(chip_id, sizeof(chip_id), "%02X%02X%02X%02X%02X%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        Serial.printf("[Setup] Chip ID: %s\r\n", chip_id);
+    } else {
+        Serial.println("[Setup] Failed to get chip ID");
+    }
+    
+    // Initialize MQTT client (only if WiFi is connected)
+    if (wifi_ok && strlen(chip_id) > 0) {
+        Serial.println("\n[Setup] Initializing MQTT...");
+        bool mqtt_ok = mqtt_client_init(chip_id);
+        if (mqtt_ok) {
+            Serial.println("[Setup] MQTT initialized successfully");
+        } else {
+            Serial.println("[Setup] MQTT initialization failed, will retry in loop");
+        }
+    } else {
+        Serial.println("[Setup] Skipping MQTT initialization (WiFi not connected or chip ID unavailable)");
+    }
     #if TEST_MODE
         Serial.println("Running in TEST MODE");
     #else
@@ -198,6 +234,14 @@ void loop() {
         // (This is a simplified test - actual reading is in lvgl_touch.cpp)
         
         last_touch_test = now;
+    }
+    
+    // WiFi connection maintenance
+    wifi_manager_loop();
+    
+    // MQTT connection maintenance (only if WiFi is connected)
+    if (wifi_manager_is_connected()) {
+        mqtt_client_loop();
     }
     
     // Small delay to prevent watchdog issues

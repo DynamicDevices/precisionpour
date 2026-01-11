@@ -10,6 +10,8 @@
             "includePath": [
                 "/data_drive/dd/precisionpour/include",
                 "/data_drive/dd/precisionpour/src",
+                "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/PubSubClient/src",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit TouchScreen",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit GFX Library",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit BusIO",
@@ -243,7 +245,6 @@
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                 ""
@@ -253,6 +254,8 @@
                 "path": [
                     "/data_drive/dd/precisionpour/include",
                     "/data_drive/dd/precisionpour/src",
+                    "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
+                    "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/PubSubClient/src",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit TouchScreen",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit GFX Library",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Adafruit BusIO",
@@ -486,7 +489,6 @@
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                    "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                     ""

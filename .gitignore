@@ -36,3 +36,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.log
+
+# Secrets file (contains WiFi and MQTT credentials)
+include/secrets.h

@@ -40,6 +40,20 @@
 // Set to 1 for test mode (hardware testing), 0 for production mode (PrecisionPour branding)
 #define TEST_MODE 0
 
+// Include secrets (WiFi and MQTT credentials)
+// secrets.h is gitignored - copy secrets.h.example to secrets.h and fill in your credentials
+#include "secrets.h"
+
+// WiFi Configuration
+#define WIFI_RECONNECT_DELAY 5000          // Delay between reconnection attempts (ms)
+
+// MQTT Configuration
+#define MQTT_PORT 1883                     // MQTT port (1883 for non-TLS, 8883 for TLS)
+#define MQTT_CLIENT_ID_PREFIX "precisionpour" // Prefix for MQTT client ID
+#define MQTT_TOPIC_PREFIX "precisionpour"     // Prefix for MQTT topics
+#define MQTT_RECONNECT_DELAY 5000            // Delay between MQTT reconnection attempts (ms)
+#define MQTT_KEEPALIVE 60                    // MQTT keepalive interval (seconds)
+
 // Wokwi simulator workaround
 // Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
 // In Wokwi, clicking the display should trigger the IRQ pin
