@@ -61,7 +61,7 @@
 // Wokwi simulator workaround
 // Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
 // In Wokwi, clicking the display should trigger the IRQ pin
-#define WOKWI_SIMULATOR 1  // Set to 1 when running in Wokwi, 0 for real hardware
+#define WOKWI_SIMULATOR 0  // Set to 1 when running in Wokwi, 0 for real hardware
 
 // Future hardware pins (placeholders for flow meter and RFID/NFC)
 #define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
