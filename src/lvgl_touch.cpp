@@ -59,21 +59,53 @@ void IRAM_ATTR irq_handler() {
 /**
  * Read a single coordinate from XPT2046 via SPI
  * Returns 12-bit value (0-4095)
+ * Uses touch screen's dedicated SPI bus: GPIO25(SCLK), GPIO32(MOSI), GPIO39(MISO)
  */
 static uint16_t xpt2046_read(uint8_t command) {
     uint16_t data = 0;
     
-    SPI.beginTransaction(SPISettings(2500000, MSBFIRST, SPI_MODE0));
+    // Touch screen uses its own SPI bus with custom pins
+    // Bit-bang SPI for touch screen (since it uses different pins than LCD SPI)
     digitalWrite(TOUCH_CS, LOW);
     delayMicroseconds(1);
     
-    // Send command and read 12-bit data
-    uint8_t dummy = SPI.transfer(command);
-    uint8_t high_byte = SPI.transfer(0x00);
-    uint8_t low_byte = SPI.transfer(0x00);
+    // Send command byte (MSB first, SPI mode 0: CPOL=0, CPHA=0)
+    uint8_t cmd = command;
+    for (int i = 7; i >= 0; i--) {
+        digitalWrite(TOUCH_SCLK, LOW);
+        digitalWrite(TOUCH_MOSI, (cmd >> i) & 0x01);
+        delayMicroseconds(1);
+        digitalWrite(TOUCH_SCLK, HIGH);
+        delayMicroseconds(1);
+    }
+    
+    // Read 12-bit data (2 bytes, MSB first)
+    uint8_t high_byte = 0;
+    uint8_t low_byte = 0;
+    
+    // Read high byte
+    for (int i = 7; i >= 0; i--) {
+        digitalWrite(TOUCH_SCLK, LOW);
+        delayMicroseconds(1);
+        digitalWrite(TOUCH_SCLK, HIGH);
+        if (digitalRead(TOUCH_MISO)) {
+            high_byte |= (1 << i);
+        }
+        delayMicroseconds(1);
+    }
+    
+    // Read low byte
+    for (int i = 7; i >= 0; i--) {
+        digitalWrite(TOUCH_SCLK, LOW);
+        delayMicroseconds(1);
+        digitalWrite(TOUCH_SCLK, HIGH);
+        if (digitalRead(TOUCH_MISO)) {
+            low_byte |= (1 << i);
+        }
+        delayMicroseconds(1);
+    }
     
     digitalWrite(TOUCH_CS, HIGH);
-    SPI.endTransaction();
     
     // Combine bytes: XPT2046 returns 12-bit data
     data = ((high_byte << 8) | low_byte) >> 4;
