@@ -39,21 +39,11 @@ static int16_t touch_y = 0;
 
 // IRQ pin monitoring
 static volatile bool irq_triggered = false;
-static volatile uint32_t irq_trigger_count = 0;
-static volatile uint32_t irq_last_trigger_time = 0;
 static int last_irq_state = -1;
-
-// Wokwi detection
-#ifdef WOKWI_SIMULATOR
-static bool wokwi_mode_detected = false;
-static uint32_t wokwi_zero_reads = 0;
-#endif
 
 // IRQ interrupt handler
 void IRAM_ATTR irq_handler() {
     irq_triggered = true;
-    irq_trigger_count++;
-    irq_last_trigger_time = millis();
 }
 
 /**
@@ -109,18 +99,6 @@ static uint16_t xpt2046_read(uint8_t command) {
     
     // Combine bytes: XPT2046 returns 12-bit data
     data = ((high_byte << 8) | low_byte) >> 4;
-    
-    #ifdef WOKWI_SIMULATOR
-    // Detect if SPI is returning all zeros (Wokwi limitation)
-    if (data == 0 && high_byte == 0 && low_byte == 0) {
-        wokwi_zero_reads++;
-        if (wokwi_zero_reads > 50 && !wokwi_mode_detected) {
-            wokwi_mode_detected = true;
-            Serial.println("\n[Touch] *** WOKWI MODE DETECTED: SPI returns zeros ***");
-            Serial.println("[Touch] Will use IRQ pin for touch detection");
-        }
-    }
-    #endif
     
     return data;
 }
@@ -242,37 +220,15 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         }
     }
     
-    // Check pressure (skip if Wokwi mode detected)
-    #ifdef WOKWI_SIMULATOR
-    if (!wokwi_mode_detected) {
-        pressure_pressed = xpt2046_is_pressed();
-    }
-    #else
+    // Check pressure
     pressure_pressed = xpt2046_is_pressed();
-    #endif
     
     // Determine if touch is pressed
     pressed = irq_pressed || pressure_pressed;
     
     if (pressed) {
         int16_t x, y;
-        
-        #ifdef WOKWI_SIMULATOR
-        // In Wokwi, if SPI doesn't work, use center coordinates when IRQ is LOW
-        if (wokwi_mode_detected && irq_pressed) {
-            // Try to read coordinates anyway, but use center as fallback
-            xpt2046_read_coords(&x, &y);
-            if (x == 0 && y == 0) {
-                // SPI not working, use center
-                x = DISPLAY_WIDTH / 2;
-                y = DISPLAY_HEIGHT / 2;
-            }
-        } else {
-            xpt2046_read_coords(&x, &y);
-        }
-        #else
         xpt2046_read_coords(&x, &y);
-        #endif
         
         data->point.x = x;
         data->point.y = y;
