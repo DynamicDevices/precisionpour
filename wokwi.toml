@@ -9,14 +9,14 @@ elf = ".pio/build/esp32dev/firmware.elf"
 
 # ESP32 Dev Module
 [[wokwi.parts]]
-type = "esp32-devkit-v1"
+type = "wokwi-esp32-devkit-v1"
 id = "esp"
 
 # TFT Display (ILI9341) - 320x240
 # Connected via SPI with pins from config.h:
 # MOSI=23, MISO=19, SCLK=18, CS=5, DC=2, RST=4, BL=15
 [[wokwi.parts]]
-type = "tft-ili9341"
+type = "wokwi-ili9341"
 id = "tft"
 width = 320
 height = 240

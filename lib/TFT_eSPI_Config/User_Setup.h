@@ -18,15 +18,11 @@
 // missing driver constants, ensure ILI9341_DRIVER is defined before
 // User_Setup_Select.h processes the driver selection code.
 
-// Display resolution (must match config.h)
-// Define these BEFORE including TFT_eSPI.h to avoid issues with default parameters
-// The driver defines file will try to override these, so we define them after driver selection
-#ifndef TFT_WIDTH
-#define TFT_WIDTH  320
-#endif
-#ifndef TFT_HEIGHT
-#define TFT_HEIGHT 240
-#endif
+// Display resolution
+// Note: TFT_WIDTH and TFT_HEIGHT are defined by the driver (ILI9341_Defines.h)
+// The driver defines them as 240x320 (portrait), but TFT_eSPI will swap them
+// based on the rotation setting. We use setRotation(1) for landscape (320x240).
+// Do not define TFT_WIDTH/TFT_HEIGHT here to avoid redefinition warnings.
 
 // Pin definitions (from config.h)
 #define TFT_MOSI 23

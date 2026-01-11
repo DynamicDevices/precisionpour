@@ -28,7 +28,7 @@
 // Display settings
 #define DISPLAY_WIDTH  320   // Update based on your display
 #define DISPLAY_HEIGHT 240   // Update based on your display
-#define DISPLAY_ROTATION 0   // 0, 1, 2, or 3
+#define DISPLAY_ROTATION 1   // 0=portrait, 1=landscape (USB right), 2=portrait, 3=landscape (USB left)
 
 // Touch settings
 #define TOUCH_THRESHOLD 400  // Adjust based on your touch controller

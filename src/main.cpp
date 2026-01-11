@@ -30,11 +30,11 @@ void setup() {
     
     Serial.println("\n\nESP32 Touchscreen Display Firmware");
     Serial.println("=====================================");
-    Serial.printf("Chip model: %s\n", ESP.getChipModel());
-    Serial.printf("Chip revision: %d\n", ESP.getChipRevision());
-    Serial.printf("CPU frequency: %d MHz\n", ESP.getCpuFreqMHz());
-    Serial.printf("Flash size: %d bytes\n", ESP.getFlashChipSize());
-    Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("Chip model: %s\r\n", ESP.getChipModel());
+    Serial.printf("Chip revision: %d\r\n", ESP.getChipRevision());
+    Serial.printf("CPU frequency: %d MHz\r\n", ESP.getCpuFreqMHz());
+    Serial.printf("Flash size: %d bytes\r\n", ESP.getFlashChipSize());
+    Serial.printf("Free heap: %d bytes\r\n", ESP.getFreeHeap());
     
     // Initialize backlight early so we can see the display
     pinMode(TFT_BL, OUTPUT);
@@ -95,7 +95,7 @@ void setup() {
     splashscreen_remove();
     
     Serial.println("Setup complete!");
-    Serial.printf("Free heap after setup: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("Free heap after setup: %d bytes\r\n", ESP.getFreeHeap());
 }
 
 void loop() {

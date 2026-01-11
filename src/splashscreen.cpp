@@ -89,7 +89,7 @@ void splashscreen_set_progress(uint8_t percent) {
         // Process LVGL to update display
         lv_timer_handler();
         
-        Serial.printf("Progress: %d%%\n", percent);
+        Serial.printf("Progress: %d%%\r\n", percent);
     }
 }
 
@@ -101,7 +101,7 @@ void splashscreen_set_status(const char *text) {
         // Process LVGL to update display
         lv_timer_handler();
         
-        Serial.printf("Status: %s\n", text);
+        Serial.printf("Status: %s\r\n", text);
     }
 }
 

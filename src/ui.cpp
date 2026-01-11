@@ -22,7 +22,7 @@ static void btn_event_cb(lv_event_t *e) {
     if (code == LV_EVENT_CLICKED) {
         counter++;
         lv_label_set_text_fmt(label_counter, "Clicks: %ld", counter);
-        Serial.printf("Button clicked! Count: %ld\n", counter);
+        Serial.printf("Button clicked! Count: %ld\r\n", counter);
     }
 }
 
