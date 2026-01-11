@@ -42,8 +42,8 @@ void splashscreen_init() {
         // Production mode: Use Precision Pour image
         Serial.println("[Splashscreen] Creating image object...");
         
-        // Set background to match logo image background color (#161716)
-        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
+        // Set background to pure black (RGB 0,0,0)
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
         lv_timer_handler();
         delay(5);
@@ -51,8 +51,8 @@ void splashscreen_init() {
         // Clear screen to ensure clean background
         lv_obj_clean(lv_scr_act());
         
-        // Ensure background stays matching logo image (#161716)
-        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
+        // Ensure background stays pure black (RGB 0,0,0)
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
         lv_timer_handler();
         delay(5);
