@@ -90,6 +90,19 @@
 //   GPIO3 (RXD0): ESP32-32E serial port receiving signal (can be used as ordinary IO if serial port not used)
 //   GPIO1 (TXD0): ESP32-32E serial port sends signals (can be used as ordinary IO if serial port not used)
 
+// Battery (if needed):
+//   GPIO34: Battery voltage ADC value Get Signal (input only, ADC1_CH6)
+
+// SPI Peripheral (shared with MicroSD, can be used as GPIO if not needed):
+//   GPIO27: SPI peripheral chip selection signal (CS), low level effective (can be used as ordinary IO if SPI device not used)
+//   GPIO18: SPI bus clock pin for SPI peripherals (shared with MicroSD, currently used for LCD SCLK)
+//   GPIO19: SPI bus read data pin (shared with MicroSD, currently used for LCD MISO)
+//   GPIO23: SPI bus write data pin (shared with MicroSD, currently used for LCD MOSI)
+// Note: GPIO18, GPIO19, GPIO23 are currently used for LCD SPI, so SPI peripherals would need different pins or sharing
+
+// NC (Not Connected):
+//   GPIO35: Can only be used as input IO (ADC1_CH7)
+
 // RFID/NFC (if needed):
 #define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select (GPIO26 available - was audio DAC, but can be repurposed)
 #define RFID_RST_PIN 32    // GPIO pin for RFID/NFC reset (GPIO32 available)
