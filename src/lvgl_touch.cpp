@@ -1,12 +1,7 @@
 /**
  * LVGL Touch Driver Implementation
- * Direct SPI communication with XPT2046 for maximum compatibility
- * Works with both Wokwi simulator and physical hardware
- * 
- * CRITICAL FIXES FOR WOKWI:
- * 1. WOKWI_SIMULATOR must be defined in platformio.ini build_flags
- * 2. In Wokwi, XPT2046 IRQ pin should go LOW when display is clicked
- * 3. Simplified touch detection for Wokwi compatibility
+ * Direct SPI communication with XPT2046 using dedicated SPI bus
+ * Touch screen uses separate SPI pins: GPIO25(SCLK), GPIO32(MOSI), GPIO39(MISO)
  */
 
 #include "lvgl_touch.h"
@@ -30,7 +25,7 @@
 #define TOUCH_X_MAX   4000
 #define TOUCH_Y_MIN   100
 #define TOUCH_Y_MAX   4000
-#define TOUCH_PRESSURE_THRESHOLD 50  // Lower threshold for Wokwi compatibility
+#define TOUCH_PRESSURE_THRESHOLD 50  // Pressure threshold for touch detection
 
 // Touch state
 static bool touch_pressed = false;
