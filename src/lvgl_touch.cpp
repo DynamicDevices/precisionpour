@@ -14,6 +14,11 @@
 #include <SPI.h>
 #include <Arduino.h>
 
+// Touch screen uses its own SPI bus (separate from LCD SPI)
+// LCD SPI: GPIO14(SCLK), GPIO13(MOSI), GPIO12(MISO)
+// Touch SPI: GPIO25(SCLK), GPIO32(MOSI), GPIO39(MISO)
+// We'll use VSPI for LCD (default) and create a custom SPI for touch
+
 // XPT2046 command bytes
 #define XPT2046_CMD_X     0x90  // Read X position (DIN = 0b10010000)
 #define XPT2046_CMD_Y     0xD0  // Read Y position (DIN = 0b11010000)
@@ -164,7 +169,15 @@ void lvgl_touch_init() {
     // Configure CS pin
     pinMode(TOUCH_CS, OUTPUT);
     digitalWrite(TOUCH_CS, HIGH);
-    Serial.printf("[Touch] CS pin: %d\r\n", TOUCH_CS);
+    
+    // Initialize touch SPI pins (separate SPI bus: GPIO25, GPIO32, GPIO39)
+    pinMode(TOUCH_SCLK, OUTPUT);
+    pinMode(TOUCH_MOSI, OUTPUT);
+    pinMode(TOUCH_MISO, INPUT);
+    digitalWrite(TOUCH_SCLK, HIGH);  // Idle high for SPI mode 0
+    
+    Serial.printf("[Touch] CS: %d, SCLK: %d, MOSI: %d, MISO: %d\r\n", 
+                  TOUCH_CS, TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
     
     // Configure IRQ pin
     if (TOUCH_IRQ >= 0) {

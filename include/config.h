@@ -8,18 +8,21 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-// Display pins (SPI) - 2.8" ESP32-32E Display pinout from lcdwiki.com
-#define TFT_MOSI 13  // TFT_SDA (Serial Data) - GPIO13
-#define TFT_MISO 12  // TFT_SDO (Serial Data Out) - GPIO12
-#define TFT_SCLK 14  // TFT_SCK (Serial Clock) - GPIO14
-#define TFT_CS   15  // TFT_CS (Chip Select) - GPIO15
-#define TFT_DC   2   // TFT_RS (Register Select) - GPIO2
-#define TFT_RST  4   // TFT_RST (Reset) - Connected to EN pin, using GPIO4
-#define TFT_BL   27  // TFT_BL (Backlight) - GPIO27
+// Display pins (SPI) - 2.8" ESP32-32E Display pinout from hardware documentation
+#define TFT_MOSI 13  // LCD SPI bus write data signal - GPIO13
+#define TFT_MISO 12  // LCD SPI bus read data signal - GPIO12
+#define TFT_SCLK 14  // LCD SPI bus clock signal - GPIO14
+#define TFT_CS   15  // LCD screen selection control signal (low level effective) - GPIO15
+#define TFT_DC   2   // LCD command/data selection (high=data, low=command) - GPIO2
+#define TFT_RST  4   // LCD reset control signal (low level reset, shared with ESP32 EN pin) - GPIO4
+#define TFT_BL   21  // LCD backlight control (high=on, low=off) - GPIO21 (was GPIO27 - WRONG!)
 
-// Touch pins (XPT2046 resistive touchscreen)
-#define TOUCH_CS 33  // T_CS (Touch Chip Select) - GPIO33
-#define TOUCH_IRQ 36 // T_IRQ (Touch Interrupt Request) - GPIO36
+// Touch pins (XPT2046 resistive touchscreen) - Has its own SPI bus!
+#define TOUCH_SCLK 25  // Touch SPI bus clock signal - GPIO25
+#define TOUCH_MOSI 32  // Touch SPI bus write data signal - GPIO32
+#define TOUCH_MISO 39  // Touch SPI bus read data signal - GPIO39
+#define TOUCH_CS 33    // Touch chip selection control signal (low level effective) - GPIO33
+#define TOUCH_IRQ 36   // Touch interrupt signal (low level = touch event) - GPIO36
 
 // I2C pins (not used for this display - touch uses SPI)
 // #define I2C_SDA 21
