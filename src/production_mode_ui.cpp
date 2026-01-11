@@ -11,6 +11,7 @@
 #include <string.h>
 #include "esp_efuse.h"
 #include "esp_system.h"
+#include "wifi_manager.h"
 // Use the logo image (extracted from splashscreen)
 #include "images/precision_pour_logo.h"
 
@@ -18,6 +19,10 @@
 static lv_obj_t *logo_container = NULL;
 static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
+static lv_obj_t *wifi_status_container = NULL;  // WiFi status icon container
+static lv_obj_t *wifi_arc1 = NULL;  // WiFi signal arc 1 (outermost)
+static lv_obj_t *wifi_arc2 = NULL;  // WiFi signal arc 2
+static lv_obj_t *wifi_arc3 = NULL;  // WiFi signal arc 3 (innermost)
 
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
@@ -225,7 +230,31 @@ void production_mode_init() {
 }
 
 void production_mode_update() {
-    // Update UI elements as needed
+    // Update WiFi status icon
+    if (wifi_status_container != NULL && wifi_arc1 != NULL && wifi_arc2 != NULL && wifi_arc3 != NULL) {
+        bool wifi_connected = wifi_manager_is_connected();
+        
+        // Update icon color based on connection status
+        // Green = connected, Red = disconnected/problem
+        static bool last_wifi_state = false;
+        if (wifi_connected != last_wifi_state) {
+            lv_color_t icon_color = wifi_connected ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000);
+            
+            // Update all three arcs
+            lv_obj_set_style_arc_color(wifi_arc1, icon_color, 0);
+            lv_obj_set_style_arc_color(wifi_arc2, icon_color, 0);
+            lv_obj_set_style_arc_color(wifi_arc3, icon_color, 0);
+            
+            last_wifi_state = wifi_connected;
+            
+            // Force redraw
+            lv_obj_invalidate(wifi_arc1);
+            lv_obj_invalidate(wifi_arc2);
+            lv_obj_invalidate(wifi_arc3);
+        }
+    }
+    
+    // Update other UI elements as needed
     // - Update flow meter readings
     // - Update RFID tag status
     // - Update pour status
