@@ -12,6 +12,7 @@
 #include "splashscreen.h"
 #include "wifi_manager.h"
 #include "mqtt_client.h"
+#include "flow_meter.h"
 #include <SPI.h>
 
 // Include mode-specific UI based on configuration
@@ -79,9 +80,10 @@ void setup() {
     splashscreen_set_status("System ready");
     delay(150);
     
-    // Hardware initialization complete (50%)
+    // Initialize flow meter (50%)
+    flow_meter_init();
     splashscreen_set_progress(50);
-    splashscreen_set_status("Hardware ready");
+    splashscreen_set_status("Flow meter ready");
     delay(200);
     
     // Prepare main UI (70%)
@@ -196,6 +198,9 @@ void loop() {
     if (wifi_manager_is_connected()) {
         mqtt_client_loop();
     }
+    
+    // Update flow meter (calculates flow rate and volume)
+    flow_meter_update();
     
     // Update UI based on mode
     #if TEST_MODE
