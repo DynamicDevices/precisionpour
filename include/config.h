@@ -68,7 +68,30 @@
 
 // Future hardware pins (placeholders for flow meter and RFID/NFC)
 #define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
-#define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select
-#define RFID_RST_PIN 32    // GPIO pin for RFID/NFC reset (changed from 27, which is now TFT_BL)
+
+// Available pins from hardware documentation:
+// MicroSD Card (if needed):
+//   GPIO5:  SD card select signal (CS), low level effective
+//   GPIO23: SD card SPI bus write data (MOSI) - shared with MicroSD and SPI peripheral
+//   GPIO18: SD card SPI bus clock (SCLK) - shared with MicroSD and SPI peripheral  
+//   GPIO19: SD card SPI bus read data (MISO) - shared with MicroSD and SPI peripheral
+// Note: GPIO18, GPIO19, GPIO23 are used by LCD SPI, so MicroSD would need different pins or sharing
+
+// Audio (if needed):
+//   GPIO4:  Audio enable signal (low level enable, high level disable)
+//   GPIO26: Audio signal DAC output signal
+// Note: GPIO4 is used for TFT_RST, so audio enable would conflict
+
+// KEY:
+//   GPIO0:  Download mode select button (press and hold to power on, then release to enter download mode)
+//   EN:     ESP32-32E reset button, low level reset (shared with LCD reset)
+
+// Serial Port (if not using USB serial):
+//   GPIO3 (RXD0): ESP32-32E serial port receiving signal (can be used as ordinary IO if serial port not used)
+//   GPIO1 (TXD0): ESP32-32E serial port sends signals (can be used as ordinary IO if serial port not used)
+
+// RFID/NFC (if needed):
+#define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select (GPIO26 available - was audio DAC, but can be repurposed)
+#define RFID_RST_PIN 32    // GPIO pin for RFID/NFC reset (GPIO32 available)
 
 #endif // CONFIG_H
