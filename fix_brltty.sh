@@ -17,13 +17,46 @@ echo "blacklist brltty" | sudo tee /etc/modprobe.d/blacklist-brltty.conf > /dev/
 echo "3. Removing brltty module..."
 sudo modprobe -r brltty 2>/dev/null || echo "   brltty module not loaded"
 
-# 4. Create udev rule to prevent brltty from claiming CH341 devices
-echo "4. Creating udev rule..."
+# 4. Create unbind script
+echo "4. Creating unbind script..."
+sudo tee /home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh > /dev/null << 'EOFSCRIPT'
+#!/bin/bash
+# Script to unbind CH341 device from brltty
+pkill -9 brltty 2>/dev/null || true
+for dev in /sys/bus/usb/devices/*/idVendor; do
+    if [ -f "$dev" ]; then
+        vendor=$(cat "$dev" 2>/dev/null)
+        product_file=$(dirname "$dev")/idProduct
+        if [ -f "$product_file" ]; then
+            product=$(cat "$product_file" 2>/dev/null)
+            if [ "$vendor" = "1a86" ] && [ "$product" = "7523" ]; then
+                device_path=$(dirname "$dev")
+                if [ -d "$device_path/driver" ]; then
+                    driver=$(readlink "$device_path/driver" 2>/dev/null | xargs basename)
+                    if [ "$driver" = "brltty" ]; then
+                        echo "$(basename $device_path)" | tee "$device_path/driver/unbind" 2>/dev/null || true
+                    fi
+                fi
+            fi
+        fi
+    fi
+done
+EOFSCRIPT
+sudo chmod +x /home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh
+
+# 5. Create udev rule to prevent brltty from claiming CH341 devices
+echo "5. Creating udev rules..."
+# Rule 1: Prevent brltty from claiming
 sudo tee /etc/udev/rules.d/99-prevent-brltty-ch341.rules > /dev/null << 'EOF'
 # Prevent brltty from claiming CH341 USB-to-serial devices
 ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ENV{BRLTTY_BRAILLE_DRIVER}=""
 KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ENV{BRLTTY_BRAILLE_DRIVER}="", MODE="0666", GROUP="dialout"
 EOF
+
+# Rule 2: Aggressively unbind from brltty
+sudo tee /etc/udev/rules.d/98-unbind-brltty-ch341.rules > /dev/null << 'EOFRULE'
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", RUN+="/bin/sh -c '/home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh'"
+EOFRULE
 
 # 5. Reload udev rules
 echo "5. Reloading udev rules..."
