@@ -21,11 +21,10 @@ static lv_obj_t *logo_container = NULL;
 static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
 static lv_obj_t *wifi_status_container = NULL;  // WiFi status icon container
-static lv_obj_t *wifi_dot = NULL;  // WiFi icon dot (bottom point)
-static lv_obj_t *wifi_arc1 = NULL;  // WiFi signal arc 1 (innermost/smallest)
-static lv_obj_t *wifi_arc2 = NULL;  // WiFi signal arc 2
-static lv_obj_t *wifi_arc3 = NULL;  // WiFi signal arc 3
-static lv_obj_t *wifi_arc4 = NULL;  // WiFi signal arc 4 (outermost/largest)
+static lv_obj_t *wifi_bar1 = NULL;  // WiFi signal bar 1 (shortest)
+static lv_obj_t *wifi_bar2 = NULL;  // WiFi signal bar 2
+static lv_obj_t *wifi_bar3 = NULL;  // WiFi signal bar 3
+static lv_obj_t *wifi_bar4 = NULL;  // WiFi signal bar 4 (tallest)
 static lv_obj_t *comm_status_container = NULL;  // Communication activity icon container
 static lv_obj_t *comm_arrow_up = NULL;  // Upload/transmit arrow
 static lv_obj_t *comm_arrow_down = NULL;  // Download/receive arrow
@@ -224,11 +223,11 @@ void production_mode_init() {
         #endif
     }
     
-    // Create WiFi status icon in bottom left corner (standard curved arcs icon)
+    // Create WiFi status icon in bottom left corner (vertical signal bars)
     Serial.println("[Production UI] Creating WiFi status icon...");
     wifi_status_container = lv_obj_create(lv_scr_act());
     if (wifi_status_container != NULL) {
-        // Container for WiFi icon (24x20 pixels to fit curved arcs)
+        // Container for WiFi icon (24x20 pixels to fit signal bars)
         lv_obj_set_size(wifi_status_container, 24, 20);
         lv_obj_align(wifi_status_container, LV_ALIGN_BOTTOM_LEFT, 5, -5);
         lv_obj_set_style_bg_opa(wifi_status_container, LV_OPA_TRANSP, 0);  // Transparent background
@@ -236,58 +235,42 @@ void production_mode_init() {
         lv_obj_set_style_pad_all(wifi_status_container, 0, 0);
         lv_obj_clear_flag(wifi_status_container, LV_OBJ_FLAG_SCROLLABLE);
         
-        // Create WiFi dot (bottom point of icon, center of arcs)
-        wifi_dot = lv_obj_create(wifi_status_container);
-        lv_obj_set_size(wifi_dot, 3, 3);
-        lv_obj_set_style_bg_opa(wifi_dot, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(wifi_dot, lv_color_hex(0xFF0000), 0);  // Red initially
-        lv_obj_set_style_border_width(wifi_dot, 0, 0);
-        lv_obj_set_style_radius(wifi_dot, LV_RADIUS_CIRCLE, 0);
-        lv_obj_align(wifi_dot, LV_ALIGN_BOTTOM_MID, 0, 0);
+        // Create WiFi signal bars (4 bars of increasing height)
+        // Bar 1 (shortest) - 4px tall
+        wifi_bar1 = lv_obj_create(wifi_status_container);
+        lv_obj_set_size(wifi_bar1, 3, 4);
+        lv_obj_set_style_bg_opa(wifi_bar1, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(wifi_bar1, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_set_style_border_width(wifi_bar1, 0, 0);
+        lv_obj_set_style_radius(wifi_bar1, 1, 0);
+        lv_obj_align(wifi_bar1, LV_ALIGN_BOTTOM_LEFT, 5, -1);
         
-        // Create WiFi signal arcs (curved lines radiating upward, like radio waves)
-        // Standard WiFi icon: 3-4 arcs, each larger than the previous
-        // Arcs are partial circles (typically 120-150 degrees) pointing upward
+        // Bar 2 - 7px tall
+        wifi_bar2 = lv_obj_create(wifi_status_container);
+        lv_obj_set_size(wifi_bar2, 3, 7);
+        lv_obj_set_style_bg_opa(wifi_bar2, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(wifi_bar2, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_set_style_border_width(wifi_bar2, 0, 0);
+        lv_obj_set_style_radius(wifi_bar2, 1, 0);
+        lv_obj_align(wifi_bar2, LV_ALIGN_BOTTOM_LEFT, 9, -1);
         
-        // Arc 1 (innermost/smallest) - 120 degrees, from 210 to 330 (pointing up)
-        wifi_arc1 = lv_arc_create(wifi_status_container);
-        lv_obj_set_size(wifi_arc1, 10, 10);
-        lv_arc_set_bg_angles(wifi_arc1, 210, 330);
-        lv_arc_set_angles(wifi_arc1, 210, 330);
-        lv_obj_remove_style(wifi_arc1, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_width(wifi_arc1, 2, 0);
-        lv_obj_set_style_arc_color(wifi_arc1, lv_color_hex(0xFF0000), 0);  // Red initially
-        lv_obj_align(wifi_arc1, LV_ALIGN_BOTTOM_MID, 0, -2);
+        // Bar 3 - 10px tall
+        wifi_bar3 = lv_obj_create(wifi_status_container);
+        lv_obj_set_size(wifi_bar3, 3, 10);
+        lv_obj_set_style_bg_opa(wifi_bar3, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(wifi_bar3, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_set_style_border_width(wifi_bar3, 0, 0);
+        lv_obj_set_style_radius(wifi_bar3, 1, 0);
+        lv_obj_align(wifi_bar3, LV_ALIGN_BOTTOM_LEFT, 13, -1);
         
-        // Arc 2 - 120 degrees, from 210 to 330
-        wifi_arc2 = lv_arc_create(wifi_status_container);
-        lv_obj_set_size(wifi_arc2, 14, 14);
-        lv_arc_set_bg_angles(wifi_arc2, 210, 330);
-        lv_arc_set_angles(wifi_arc2, 210, 330);
-        lv_obj_remove_style(wifi_arc2, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_width(wifi_arc2, 2, 0);
-        lv_obj_set_style_arc_color(wifi_arc2, lv_color_hex(0xFF0000), 0);  // Red initially
-        lv_obj_align(wifi_arc2, LV_ALIGN_BOTTOM_MID, 0, -3);
-        
-        // Arc 3 - 120 degrees, from 210 to 330
-        wifi_arc3 = lv_arc_create(wifi_status_container);
-        lv_obj_set_size(wifi_arc3, 18, 18);
-        lv_arc_set_bg_angles(wifi_arc3, 210, 330);
-        lv_arc_set_angles(wifi_arc3, 210, 330);
-        lv_obj_remove_style(wifi_arc3, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_width(wifi_arc3, 2, 0);
-        lv_obj_set_style_arc_color(wifi_arc3, lv_color_hex(0xFF0000), 0);  // Red initially
-        lv_obj_align(wifi_arc3, LV_ALIGN_BOTTOM_MID, 0, -4);
-        
-        // Arc 4 (outermost/largest) - 120 degrees, from 210 to 330
-        wifi_arc4 = lv_arc_create(wifi_status_container);
-        lv_obj_set_size(wifi_arc4, 22, 22);
-        lv_arc_set_bg_angles(wifi_arc4, 210, 330);
-        lv_arc_set_angles(wifi_arc4, 210, 330);
-        lv_obj_remove_style(wifi_arc4, NULL, LV_PART_KNOB);
-        lv_obj_set_style_arc_width(wifi_arc4, 2, 0);
-        lv_obj_set_style_arc_color(wifi_arc4, lv_color_hex(0xFF0000), 0);  // Red initially
-        lv_obj_align(wifi_arc4, LV_ALIGN_BOTTOM_MID, 0, -5);
+        // Bar 4 (tallest) - 13px tall
+        wifi_bar4 = lv_obj_create(wifi_status_container);
+        lv_obj_set_size(wifi_bar4, 3, 13);
+        lv_obj_set_style_bg_opa(wifi_bar4, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(wifi_bar4, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_set_style_border_width(wifi_bar4, 0, 0);
+        lv_obj_set_style_radius(wifi_bar4, 1, 0);
+        lv_obj_align(wifi_bar4, LV_ALIGN_BOTTOM_LEFT, 17, -1);
         
         Serial.println("[Production UI] WiFi status icon created");
     }
@@ -340,54 +323,50 @@ void production_mode_init() {
 
 void production_mode_update() {
     // Update WiFi status icon
-    if (wifi_status_container != NULL && wifi_dot != NULL && 
-        wifi_arc1 != NULL && wifi_arc2 != NULL && wifi_arc3 != NULL && wifi_arc4 != NULL) {
+    if (wifi_status_container != NULL && 
+        wifi_bar1 != NULL && wifi_bar2 != NULL && wifi_bar3 != NULL && wifi_bar4 != NULL) {
         bool wifi_connected = wifi_manager_is_connected();
         int rssi = wifi_manager_get_rssi();
         
         // Determine color: Green when connected, Red when disconnected
         lv_color_t icon_color = wifi_connected ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000);
         
-        // Determine number of arcs to show based on signal strength
+        // Determine number of bars to show based on signal strength
         // RSSI ranges: Excellent: >-50, Good: -50 to -60, Fair: -60 to -70, Weak: -70 to -80, Very Weak: <-80
-        int arcs_to_show = 0;
+        int bars_to_show = 0;
         if (wifi_connected) {
             if (rssi > -50) {
-                arcs_to_show = 4;  // Excellent signal - show all 4 arcs
+                bars_to_show = 4;  // Excellent signal - show all 4 bars
             } else if (rssi > -60) {
-                arcs_to_show = 3;  // Good signal - show 3 arcs
+                bars_to_show = 3;  // Good signal - show 3 bars
             } else if (rssi > -70) {
-                arcs_to_show = 2;  // Fair signal - show 2 arcs
+                bars_to_show = 2;  // Fair signal - show 2 bars
             } else if (rssi > -80) {
-                arcs_to_show = 1;  // Weak signal - show 1 arc
+                bars_to_show = 1;  // Weak signal - show 1 bar
             } else {
-                arcs_to_show = 1;  // Very weak, but show at least 1 arc
+                bars_to_show = 1;  // Very weak, but show at least 1 bar
             }
         } else {
-            arcs_to_show = 0;  // No arcs when disconnected
+            bars_to_show = 0;  // No bars when disconnected
         }
         
-        // Update dot color
-        lv_obj_set_style_bg_color(wifi_dot, icon_color, 0);
+        // Update bar colors and visibility
+        lv_obj_set_style_bg_color(wifi_bar1, icon_color, 0);
+        lv_obj_set_style_bg_color(wifi_bar2, icon_color, 0);
+        lv_obj_set_style_bg_color(wifi_bar3, icon_color, 0);
+        lv_obj_set_style_bg_color(wifi_bar4, icon_color, 0);
         
-        // Update arc colors and visibility
-        lv_obj_set_style_arc_color(wifi_arc1, icon_color, 0);
-        lv_obj_set_style_arc_color(wifi_arc2, icon_color, 0);
-        lv_obj_set_style_arc_color(wifi_arc3, icon_color, 0);
-        lv_obj_set_style_arc_color(wifi_arc4, icon_color, 0);
-        
-        // Show/hide arcs based on signal strength (dimmed when not shown)
-        lv_obj_set_style_arc_opa(wifi_arc1, (arcs_to_show >= 1) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_arc_opa(wifi_arc2, (arcs_to_show >= 2) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_arc_opa(wifi_arc3, (arcs_to_show >= 3) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_arc_opa(wifi_arc4, (arcs_to_show >= 4) ? LV_OPA_COVER : LV_OPA_20, 0);
+        // Show/hide bars based on signal strength (dimmed when not shown)
+        lv_obj_set_style_opa(wifi_bar1, (bars_to_show >= 1) ? LV_OPA_COVER : LV_OPA_20, 0);
+        lv_obj_set_style_opa(wifi_bar2, (bars_to_show >= 2) ? LV_OPA_COVER : LV_OPA_20, 0);
+        lv_obj_set_style_opa(wifi_bar3, (bars_to_show >= 3) ? LV_OPA_COVER : LV_OPA_20, 0);
+        lv_obj_set_style_opa(wifi_bar4, (bars_to_show >= 4) ? LV_OPA_COVER : LV_OPA_20, 0);
         
         // Force redraw
-        lv_obj_invalidate(wifi_dot);
-        lv_obj_invalidate(wifi_arc1);
-        lv_obj_invalidate(wifi_arc2);
-        lv_obj_invalidate(wifi_arc3);
-        lv_obj_invalidate(wifi_arc4);
+        lv_obj_invalidate(wifi_bar1);
+        lv_obj_invalidate(wifi_bar2);
+        lv_obj_invalidate(wifi_bar3);
+        lv_obj_invalidate(wifi_bar4);
     }
     
     // Update communication activity icon
