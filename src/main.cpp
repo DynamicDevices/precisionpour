@@ -10,7 +10,14 @@
 #include "lvgl_display.h"
 #include "lvgl_touch.h"
 #include "splashscreen.h"
-#include "ui.h"
+#include <SPI.h>
+
+// Include mode-specific UI based on configuration
+#if TEST_MODE
+    #include "test_mode_ui.h"
+#else
+    #include "production_mode_ui.h"
+#endif
 
 // LVGL tick timer
 hw_timer_t *lvgl_timer = NULL;
@@ -77,24 +84,68 @@ void setup() {
     
     // Prepare main UI (70%)
     splashscreen_set_progress(70);
-    splashscreen_set_status("Loading UI...");
+    #if TEST_MODE
+        splashscreen_set_status("Loading test mode...");
+    #else
+        splashscreen_set_status("Loading PrecisionPour...");
+    #endif
     delay(200);
     
-    // Initialize main UI (90%)
-    ui_init();
+    // Set progress to 90% BEFORE initializing UI (UI init will clear screen)
+    Serial.println("[Setup] Setting progress to 90%...");
+    Serial.flush();
     splashscreen_set_progress(90);
-    splashscreen_set_status("UI ready");
-    delay(300);
+    splashscreen_set_status("Loading UI...");
+    Serial.println("[Setup] Progress set to 90%");
+    Serial.flush();
+    delay(200);
     
-    // Finalize (100%)
-    splashscreen_set_progress(100);
-    splashscreen_set_status("Ready!");
-    delay(500);  // Show 100% for a moment
+    // Set background to black BEFORE removing splashscreen to prevent white flash
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x1A1A1A), 0);
+    lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+    lv_timer_handler();
+    delay(5);
     
-    // Remove splashscreen and show main UI
+    // Remove splashscreen FIRST, then initialize UI
+    // (UI init clears the screen, so we need to remove splashscreen first)
+    Serial.println("[Setup] Removing splashscreen before UI init...");
+    Serial.flush();
     splashscreen_remove();
+    Serial.println("[Setup] Splashscreen removed");
+    Serial.flush();
     
-    Serial.println("Setup complete!");
+    // Ensure background stays black during transition
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x1A1A1A), 0);
+    lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+    lv_timer_handler();
+    delay(5);
+    
+    // Now initialize main UI (this will create the UI on clean screen)
+    Serial.println("\n[Setup] About to initialize UI...");
+    #if TEST_MODE
+        Serial.println("[Setup] Initializing test mode UI...");
+        test_mode_init();
+        Serial.println("[Setup] Test mode UI initialized - DONE");
+    #else
+        Serial.println("[Setup] Initializing production mode UI...");
+        production_mode_init();
+        Serial.println("[Setup] Production mode UI initialized - DONE");
+    #endif
+    Serial.flush();
+    
+    // Finalize (100% - just for logging, splashscreen is already gone)
+    Serial.println("[Setup] Setup sequence complete!");
+    Serial.flush();
+    
+    Serial.println("\n========================================");
+    Serial.println("SETUP COMPLETE!");
+    Serial.println("========================================");
+    Serial.flush();
+    #if TEST_MODE
+        Serial.println("Running in TEST MODE");
+    #else
+        Serial.println("Running in PRODUCTION MODE");
+    #endif
     Serial.printf("Free heap after setup: %d bytes\r\n", ESP.getFreeHeap());
 }
 
@@ -102,8 +153,52 @@ void loop() {
     // Handle LVGL tasks (should be called every few milliseconds)
     lv_timer_handler();
     
-    // Update UI if needed
-    ui_update();
+    // Update UI based on mode
+    #if TEST_MODE
+        test_mode_update();
+    #else
+        production_mode_update();
+    #endif
+    
+    // Continuous IRQ pin monitoring (every 100ms) to catch ANY state changes
+    static uint32_t last_irq_check = 0;
+    static int last_irq_state = -1;
+    uint32_t now = millis();
+    if (now - last_irq_check > 100) {
+        if (TOUCH_IRQ >= 0) {
+            int current_irq_state = digitalRead(TOUCH_IRQ);
+            if (current_irq_state != last_irq_state) {
+                Serial.printf("\n[Main Loop] *** IRQ PIN STATE CHANGED: %s -> %s (pin %d) ***\r\n",
+                            last_irq_state == HIGH ? "HIGH" : (last_irq_state == LOW ? "LOW" : "UNKNOWN"),
+                            current_irq_state == HIGH ? "HIGH" : "LOW",
+                            TOUCH_IRQ);
+                Serial.flush();
+                last_irq_state = current_irq_state;
+            }
+        }
+        last_irq_check = now;
+    }
+    
+    // Periodic touch controller test (every 3 seconds)
+    static uint32_t last_touch_test = 0;
+    if (now - last_touch_test > 3000) {
+        Serial.println("\n[Main Loop] Testing touch controller...");
+        
+        // Test IRQ pin
+        if (TOUCH_IRQ >= 0) {
+            int irq_state = digitalRead(TOUCH_IRQ);
+            Serial.printf("[Main Loop] IRQ pin state: %s (pin %d)\r\n", 
+                        irq_state == LOW ? "LOW" : "HIGH", TOUCH_IRQ);
+        }
+        
+        // Test SPI communication by reading raw values
+        // Note: This will conflict with LVGL's touch reading, but it's just for debugging
+        Serial.println("[Main Loop] Reading raw touch values via SPI...");
+        // We'll do a quick read to see if SPI is working
+        // (This is a simplified test - actual reading is in lvgl_touch.cpp)
+        
+        last_touch_test = now;
+    }
     
     // Small delay to prevent watchdog issues
     delay(5);

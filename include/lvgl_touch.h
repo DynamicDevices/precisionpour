@@ -28,4 +28,10 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data);
  */
 void update_touch_state(int16_t x, int16_t y, bool pressed);
 
+/**
+ * Get current touch state (for test mode)
+ * Returns true if touch is currently pressed
+ */
+bool get_touch_state(int16_t *x, int16_t *y);
+
 #endif // LVGL_TOUCH_H

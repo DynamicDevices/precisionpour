@@ -36,6 +36,10 @@
 #define TFT_BL   15
 #define TFT_BACKLIGHT_ON HIGH
 
+// Touch controller (XPT2046)
+#define TOUCH_CS 21
+#define TOUCH_IRQ 22  // Optional, but recommended
+
 // SPI frequency
 #define SPI_FREQUENCY  27000000
 #define SPI_READ_FREQUENCY  20000000

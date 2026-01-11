@@ -498,6 +498,7 @@
                 "CORE_DEBUG_LEVEL=3",
                 "BOARD_HAS_PSRAM",
                 "LV_CONF_INCLUDE_SIMPLE",
+                "WOKWI_SIMULATOR",
                 "HAVE_CONFIG_H",
                 "MBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\"",
                 "UNITY_INCLUDE_CONFIG_H",

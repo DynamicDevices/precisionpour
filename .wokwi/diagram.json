@@ -6,15 +6,15 @@
     {
       "type": "wokwi-esp32-devkit-v1",
       "id": "esp",
-      "top": 0,
-      "left": 0,
+      "top": 50,
+      "left": 50,
       "attrs": {}
     },
     {
       "type": "wokwi-ili9341",
       "id": "tft",
-      "top": 0,
-      "left": 400,
+      "top": 50,
+      "left": 500,
       "rotate": 90,
       "attrs": {
         "width": "320",
@@ -25,9 +25,11 @@
     {
       "type": "xpt2046",
       "id": "touch",
-      "top": 300,
-      "left": 400,
-      "attrs": {}
+      "top": 350,
+      "left": 500,
+      "attrs": {
+        "touchscreen": "tft"
+      }
     }
   ],
   "connections": [

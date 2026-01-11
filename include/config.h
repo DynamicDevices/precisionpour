@@ -31,9 +31,23 @@
 #define DISPLAY_ROTATION 1   // 0=portrait, 1=landscape (USB right), 2=portrait, 3=landscape (USB left)
 
 // Touch settings
-#define TOUCH_THRESHOLD 400  // Adjust based on your touch controller
+#define TOUCH_THRESHOLD 100  // Adjust based on your touch controller (lower = more sensitive)
 
 // Serial settings
 #define SERIAL_BAUD 115200
+
+// Operating mode
+// Set to 1 for test mode (hardware testing), 0 for production mode (PrecisionPour branding)
+#define TEST_MODE 0
+
+// Wokwi simulator workaround
+// Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
+// In Wokwi, clicking the display should trigger the IRQ pin
+#define WOKWI_SIMULATOR 1  // Set to 1 when running in Wokwi, 0 for real hardware
+
+// Future hardware pins (placeholders for flow meter and RFID/NFC)
+#define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
+#define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select
+#define RFID_RST_PIN 27    // GPIO pin for RFID/NFC reset
 
 #endif // CONFIG_H

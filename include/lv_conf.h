@@ -254,7 +254,7 @@
 #define LV_USE_GIF 0
 
 /*1: Enable QR code library*/
-#define LV_USE_QRCODE 0
+#define LV_USE_QRCODE 1
 
 /*1: Enable FreeType library*/
 #define LV_USE_FREETYPE 0
