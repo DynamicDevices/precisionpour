@@ -19,7 +19,10 @@
 static lv_obj_t *logo_container = NULL;
 static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
-static lv_obj_t *wifi_status_icon = NULL;  // WiFi connection status icon
+static lv_obj_t *wifi_status_container = NULL;  // WiFi status icon container
+static lv_obj_t *wifi_arc1 = NULL;  // WiFi signal arc 1 (outermost)
+static lv_obj_t *wifi_arc2 = NULL;  // WiFi signal arc 2
+static lv_obj_t *wifi_arc3 = NULL;  // WiFi signal arc 3 (innermost)
 
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x161716) // Background color from logo image (RGB 22,23,22)
@@ -99,19 +102,48 @@ void production_mode_init() {
     lv_timer_handler();
     delay(5);
     
-    // Create WiFi status icon in top left corner
+    // Create WiFi status icon in top right corner (to avoid overlapping with logo)
     Serial.println("[Production UI] Creating WiFi status icon...");
-    wifi_status_icon = lv_obj_create(lv_scr_act());
-    if (wifi_status_icon != NULL) {
-        // Small icon container (20x20 pixels)
-        lv_obj_set_size(wifi_status_icon, 20, 20);
-        lv_obj_align(wifi_status_icon, LV_ALIGN_TOP_LEFT, 5, 5);
-        lv_obj_set_style_bg_opa(wifi_status_icon, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(wifi_status_icon, 0, 0);
-        lv_obj_set_style_radius(wifi_status_icon, 10, 0);  // Circular icon
+    wifi_status_container = lv_obj_create(lv_scr_act());
+    if (wifi_status_container != NULL) {
+        // Container for WiFi icon (30x30 pixels to fit the arcs)
+        lv_obj_set_size(wifi_status_container, 30, 30);
+        lv_obj_align(wifi_status_container, LV_ALIGN_TOP_RIGHT, -5, 5);
+        lv_obj_set_style_bg_opa(wifi_status_container, LV_OPA_TRANSP, 0);  // Transparent background
+        lv_obj_set_style_border_width(wifi_status_container, 0, 0);
+        lv_obj_set_style_pad_all(wifi_status_container, 0, 0);
+        lv_obj_clear_flag(wifi_status_container, LV_OBJ_FLAG_SCROLLABLE);
         
-        // Initially set to disconnected (red)
-        lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0xFF0000), 0);
+        // Create WiFi signal arcs (typical WiFi icon: 3 arcs)
+        // Arc 1 (outermost) - 120 degrees, from 210 to 330
+        wifi_arc1 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc1, 24, 24);
+        lv_arc_set_bg_angles(wifi_arc1, 210, 330);
+        lv_arc_set_angles(wifi_arc1, 210, 330);
+        lv_obj_remove_style(wifi_arc1, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc1, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc1, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc1, LV_ALIGN_CENTER, 0, 0);
+        
+        // Arc 2 (middle) - 120 degrees, from 210 to 330
+        wifi_arc2 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc2, 18, 18);
+        lv_arc_set_bg_angles(wifi_arc2, 210, 330);
+        lv_arc_set_angles(wifi_arc2, 210, 330);
+        lv_obj_remove_style(wifi_arc2, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc2, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc2, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc2, LV_ALIGN_CENTER, 0, 0);
+        
+        // Arc 3 (innermost) - 120 degrees, from 210 to 330
+        wifi_arc3 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc3, 12, 12);
+        lv_arc_set_bg_angles(wifi_arc3, 210, 330);
+        lv_arc_set_angles(wifi_arc3, 210, 330);
+        lv_obj_remove_style(wifi_arc3, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc3, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc3, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc3, LV_ALIGN_CENTER, 0, 0);
         
         Serial.println("[Production UI] WiFi status icon created");
     }
@@ -246,20 +278,26 @@ void production_mode_init() {
 
 void production_mode_update() {
     // Update WiFi status icon
-    if (wifi_status_icon != NULL) {
+    if (wifi_status_container != NULL && wifi_arc1 != NULL && wifi_arc2 != NULL && wifi_arc3 != NULL) {
         bool wifi_connected = wifi_manager_is_connected();
         
         // Update icon color based on connection status
         // Green = connected, Red = disconnected/problem
         static bool last_wifi_state = false;
         if (wifi_connected != last_wifi_state) {
-            if (wifi_connected) {
-                lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0x00FF00), 0);  // Green
-            } else {
-                lv_obj_set_style_bg_color(wifi_status_icon, lv_color_hex(0xFF0000), 0);  // Red
-            }
+            lv_color_t icon_color = wifi_connected ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000);
+            
+            // Update all three arcs
+            lv_obj_set_style_arc_color(wifi_arc1, icon_color, 0);
+            lv_obj_set_style_arc_color(wifi_arc2, icon_color, 0);
+            lv_obj_set_style_arc_color(wifi_arc3, icon_color, 0);
+            
             last_wifi_state = wifi_connected;
-            lv_obj_invalidate(wifi_status_icon);  // Force redraw
+            
+            // Force redraw
+            lv_obj_invalidate(wifi_arc1);
+            lv_obj_invalidate(wifi_arc2);
+            lv_obj_invalidate(wifi_arc3);
         }
     }
     
