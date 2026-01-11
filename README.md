@@ -249,3 +249,5 @@ bool active = mqtt_client_has_activity();
 - **[Setup Guide](docs/SETUP_GUIDE.md)** - Detailed PlatformIO installation instructions
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and shortcuts
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Hardware configuration guide
+- **[Flow Meter Guide](docs/FLOW_METER.md)** - YF-S201 flow sensor integration details
+- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Code organization and file structure
