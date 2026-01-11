@@ -10,8 +10,8 @@
 #include <Arduino.h>
 
 #if !TEST_MODE
-    // Include the Precision Pour image (only in production mode)
-    #include "images/precision_pour_img.h"
+    // Include the Precision Pour logo image (used for both splashscreen and main page)
+    #include "images/precision_pour_logo.h"
 #endif
 
 static lv_obj_t *splashscreen_img = NULL;
@@ -42,28 +42,37 @@ void splashscreen_init() {
         // Production mode: Use Precision Pour image
         Serial.println("[Splashscreen] Creating image object...");
         
-        // Clear screen first to ensure clean background
+        // Set background to match logo image background color (#161716)
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
+        lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+        lv_timer_handler();
+        delay(5);
+        
+        // Clear screen to ensure clean background
         lv_obj_clean(lv_scr_act());
+        
+        // Ensure background stays matching logo image (#161716)
+        lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
+        lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
+        lv_timer_handler();
+        delay(5);
         
         // Create image object
         splashscreen_img = lv_img_create(lv_scr_act());
         
-        // Load the embedded Precision Pour image BEFORE setting size
-        Serial.println("[Splashscreen] Setting image source...");
-        Serial.printf("[Splashscreen] Image pointer: %p, data pointer: %p, data_size: %d\r\n",
-                     &precision_pour_img, precision_pour_img.data, precision_pour_img.data_size);
+        // Load the embedded Precision Pour logo image
+        Serial.println("[Splashscreen] Setting logo image source...");
+        Serial.printf("[Splashscreen] Logo pointer: %p, data pointer: %p, data_size: %d\r\n",
+                     &precision_pour_logo, precision_pour_logo.data, precision_pour_logo.data_size);
         
-        if (precision_pour_img.data == NULL) {
-            Serial.println("[Splashscreen] ERROR: Image data is NULL!");
+        if (precision_pour_logo.data == NULL) {
+            Serial.println("[Splashscreen] ERROR: Logo image data is NULL!");
         } else {
-            Serial.println("[Splashscreen] Image data is valid, setting source...");
-            lv_img_set_src(splashscreen_img, &precision_pour_img);
+            Serial.println("[Splashscreen] Logo image data is valid, setting source...");
+            lv_img_set_src(splashscreen_img, &precision_pour_logo);
         }
         
-        // Set image size explicitly to match display (after setting source)
-        lv_obj_set_size(splashscreen_img, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-        
-        // Center the image
+        // Center the logo on the screen (logo is 280x80, display is 320x240)
         lv_obj_align(splashscreen_img, LV_ALIGN_CENTER, 0, 0);
         
         // Remove any padding
@@ -79,18 +88,19 @@ void splashscreen_init() {
             delay(5);
         }
         
-        Serial.println("[Splashscreen] Precision Pour image should be visible");
-        Serial.printf("[Splashscreen] Image data pointer: %p, size: %d bytes\r\n", 
-                     precision_pour_img.data, precision_pour_img.data_size);
+        Serial.println("[Splashscreen] Precision Pour logo should be visible");
+        Serial.printf("[Splashscreen] Logo data pointer: %p, size: %d bytes\r\n", 
+                     precision_pour_logo.data, precision_pour_logo.data_size);
         
         // The image already contains the branding, so we just add the progress bar overlay
     #endif
     
-    // Create progress bar at the bottom (matching image design)
-    // The image has a progress bar area, so we'll overlay our animated one
-    progress_bar = lv_bar_create(splashscreen_img);
+    // Create progress bar at the bottom
+    // Position it below the logo, centered horizontally
+    progress_bar = lv_bar_create(lv_scr_act());
     lv_obj_set_size(progress_bar, DISPLAY_WIDTH - (PROGRESS_BAR_MARGIN * 2), PROGRESS_BAR_HEIGHT);
-    lv_obj_align(progress_bar, LV_ALIGN_BOTTOM_MID, 0, PROGRESS_BAR_Y_OFFSET);
+    // Position progress bar at bottom with some margin
+    lv_obj_align(progress_bar, LV_ALIGN_BOTTOM_MID, 0, -20);
     
     // Style the progress bar to match the Precision Pour design
     // Background: dark gray (matches image)
@@ -136,7 +146,7 @@ void splashscreen_init() {
     #else
         Serial.println("Splashscreen displayed (production mode - Precision Pour image)");
         Serial.printf("Image pointer: %p, Size: %dx%d\r\n", 
-                     &precision_pour_img, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+                     &precision_pour_logo, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     #endif
 }
 

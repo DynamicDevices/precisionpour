@@ -100,8 +100,8 @@ void setup() {
     Serial.flush();
     delay(200);
     
-    // Set background to black BEFORE removing splashscreen to prevent white flash
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x1A1A1A), 0);
+    // Set background to match logo image background (#161716) BEFORE removing splashscreen
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_timer_handler();
     delay(5);
@@ -114,8 +114,8 @@ void setup() {
     Serial.println("[Setup] Splashscreen removed");
     Serial.flush();
     
-    // Ensure background stays black during transition
-    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x1A1A1A), 0);
+    // Ensure background stays matching logo image (#161716) during transition
+    lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x161716), 0);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_timer_handler();
     delay(5);

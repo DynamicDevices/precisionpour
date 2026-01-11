@@ -11,6 +11,8 @@
 #include <string.h>
 #include "esp_efuse.h"
 #include "esp_system.h"
+// Use the logo image (extracted from splashscreen)
+#include "images/precision_pour_logo.h"
 
 // UI objects
 static lv_obj_t *logo_container = NULL;
@@ -18,7 +20,7 @@ static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
 
 // Brand colors (matching PrecisionPour branding)
-#define COLOR_BACKGROUND lv_color_hex(0x1A1A1A) // Dark gray/black
+#define COLOR_BACKGROUND lv_color_hex(0x161716) // Background color from logo image (RGB 22,23,22)
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
 #define COLOR_GOLDEN lv_color_hex(0xFFD700) // Golden yellow (branding color)
 
@@ -81,18 +83,22 @@ void production_mode_init() {
     }
     
     // Set background color FIRST (before clearing) to prevent white flash
+    // Use background color from logo image (#161716) to match perfectly
     lv_obj_set_style_bg_color(lv_scr_act(), COLOR_BACKGROUND, 0);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_timer_handler();
     delay(5);
     
-    // Now clear screen (background is already set to black)
+    // Now clear screen (background is already set)
     lv_obj_clean(lv_scr_act());
+    // Re-apply background color to match logo
+    lv_obj_set_style_bg_color(lv_scr_act(), COLOR_BACKGROUND, 0);
+    lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
     lv_timer_handler();
     delay(5);
     
-    // Create logo area at the top using text labels (simpler and more reliable)
-    Serial.println("[Production UI] Creating logo...");
+    // Create logo area at the top using the splashscreen logo image
+    Serial.println("[Production UI] Creating logo from image...");
     Serial.flush();
     logo_container = lv_obj_create(lv_scr_act());
     if (logo_container == NULL) {
@@ -101,43 +107,53 @@ void production_mode_init() {
         return;
     }
     
-    lv_obj_set_size(logo_container, DISPLAY_WIDTH, 80);
+    // Set container size to fit logo (adjust based on logo height)
+    // Logo is 80px high, we'll make container 90px to move it up and add spacing
+    lv_obj_set_size(logo_container, DISPLAY_WIDTH, 90);
     lv_obj_align(logo_container, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_set_style_bg_opa(logo_container, LV_OPA_TRANSP, 0);  // Transparent background
     lv_obj_set_style_border_width(logo_container, 0, 0);
     lv_obj_set_style_pad_all(logo_container, 0, 0);
+    // Enable clipping so only the top 100px of the image is visible
+    lv_obj_set_style_clip_corner(logo_container, false, 0);
+    lv_obj_clear_flag(logo_container, LV_OBJ_FLAG_SCROLLABLE);  // Disable scrolling
     lv_timer_handler();
     
-    // Create "PRECISION POUR" title text (matching splashscreen style)
-    lv_obj_t *title_label = lv_label_create(logo_container);
-    if (title_label != NULL) {
-        lv_label_set_text(title_label, "PRECISION POUR");
-        lv_obj_set_style_text_font(title_label, &lv_font_montserrat_14, 0);
-        lv_obj_set_style_text_color(title_label, COLOR_TEXT, 0);
-        lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
+    // Create logo image object
+    lv_obj_t *logo_img = lv_img_create(logo_container);
+    if (logo_img == NULL) {
+        Serial.println("[Production UI] ERROR: Failed to create logo image object!");
+        Serial.flush();
+        return;
     }
     
-    // Create decorative line below title (golden yellow to match branding)
-    lv_obj_t *line = lv_obj_create(logo_container);
-    if (line != NULL) {
-        lv_obj_set_size(line, 200, 2);
-        lv_obj_align(line, LV_ALIGN_TOP_MID, 0, 35);
-        lv_obj_set_style_bg_color(line, COLOR_GOLDEN, 0);
-        lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_width(line, 0, 0);
-        lv_obj_set_style_radius(line, 0, 0);
-    }
+    // Set logo image source - use the logo image (properly sized)
+    Serial.printf("[Production UI] Setting logo image source, data pointer: %p\r\n", precision_pour_logo.data);
+    Serial.printf("[Production UI] Logo dimensions: %dx%d\r\n", 
+                  precision_pour_logo.header.w, precision_pour_logo.header.h);
     
+    // Set image source
+    lv_img_set_src(logo_img, &precision_pour_logo);
+    
+    // Center the logo in the container
+    lv_obj_align(logo_img, LV_ALIGN_CENTER, 0, 0);
+    
+    // Force refresh
+    lv_obj_invalidate(logo_img);
+    lv_refr_now(NULL);
     lv_timer_handler();
-    Serial.println("[Production UI] Logo created (text-based)");
+    delay(10);
+    lv_timer_handler();
+    
+    Serial.println("[Production UI] Logo created from image");
     Serial.flush();
     
     // Create QR code in the center
     Serial.println("[Production UI] Creating QR code...");
     Serial.flush();
     #if LV_USE_QRCODE
-        // Calculate QR code size (fit in remaining space)
-        lv_coord_t qr_size = 120;  // QR code size in pixels
+        // Calculate QR code size (larger and better centered)
+        lv_coord_t qr_size = 130;  // QR code size in pixels (increased for better visibility)
         
         // Create QR code with size and colors (LVGL v8 API)
         // QR code is generated once at initialization - it's not dynamically updated
@@ -151,9 +167,9 @@ void production_mode_init() {
             // URL can include device ID - see get_chip_id_string() above
             lv_qrcode_update(qr_code, qr_code_url, strlen(qr_code_url));
             
-            // Position QR code below logo, with proper spacing
-            // Logo is ~80px high, QR code is 120px
-            // Position QR code at y=70 (80px logo - 10px overlap for tighter spacing)
+            // Position QR code 50px above center
+            // Display is 240px high, center is 120px
+            // Position at 70px from top (120 - 50 = 70px)
             lv_obj_align(qr_code, LV_ALIGN_TOP_MID, 0, 70);
             lv_timer_handler();
             
@@ -184,13 +200,11 @@ void production_mode_init() {
         lv_obj_set_style_text_color(label_qr_text, COLOR_TEXT, 0);
         lv_obj_set_style_text_align(label_qr_text, LV_TEXT_ALIGN_CENTER, 0);
         
-        // Position text below QR code with proper spacing
-        // QR code is at y=70, height=120, so bottom is at y=190
-        // Position text at y=200 (10px spacing below QR code)
+        // Position text at the bottom of the screen
         #if LV_USE_QRCODE
             if (qr_code != NULL) {
-                // Position below QR code with spacing (QR code bottom is at ~190px)
-                lv_obj_align(label_qr_text, LV_ALIGN_TOP_MID, 0, 200);
+                // Position at bottom with some margin
+                lv_obj_align(label_qr_text, LV_ALIGN_BOTTOM_MID, 0, -10);
             } else {
                 lv_obj_align(label_qr_text, LV_ALIGN_BOTTOM_MID, 0, -30);
             }
