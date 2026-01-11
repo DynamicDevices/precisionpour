@@ -358,20 +358,31 @@ void production_mode_update() {
                 bars_to_show = 1;  // Very weak, but show at least 1 bar
             }
         } else {
-            bars_to_show = 0;  // No bars when disconnected
+            bars_to_show = 0;  // No bars when disconnected (but still show them dimmed)
         }
         
-        // Update bar colors and visibility
+        // Update bar colors
         lv_obj_set_style_bg_color(wifi_bar1, icon_color, 0);
         lv_obj_set_style_bg_color(wifi_bar2, icon_color, 0);
         lv_obj_set_style_bg_color(wifi_bar3, icon_color, 0);
         lv_obj_set_style_bg_color(wifi_bar4, icon_color, 0);
         
-        // Show/hide bars based on signal strength (dimmed when not shown)
-        lv_obj_set_style_opa(wifi_bar1, (bars_to_show >= 1) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_opa(wifi_bar2, (bars_to_show >= 2) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_opa(wifi_bar3, (bars_to_show >= 3) ? LV_OPA_COVER : LV_OPA_20, 0);
-        lv_obj_set_style_opa(wifi_bar4, (bars_to_show >= 4) ? LV_OPA_COVER : LV_OPA_20, 0);
+        // Show/hide bars based on signal strength
+        // When disconnected (bars_to_show = 0), show all bars at 40% opacity so they're still visible
+        // When connected, show bars based on signal strength
+        if (bars_to_show == 0) {
+            // Disconnected - show all bars dimmed but visible
+            lv_obj_set_style_opa(wifi_bar1, LV_OPA_40, 0);
+            lv_obj_set_style_opa(wifi_bar2, LV_OPA_40, 0);
+            lv_obj_set_style_opa(wifi_bar3, LV_OPA_40, 0);
+            lv_obj_set_style_opa(wifi_bar4, LV_OPA_40, 0);
+        } else {
+            // Connected - show bars based on signal strength
+            lv_obj_set_style_opa(wifi_bar1, (bars_to_show >= 1) ? LV_OPA_COVER : LV_OPA_20, 0);
+            lv_obj_set_style_opa(wifi_bar2, (bars_to_show >= 2) ? LV_OPA_COVER : LV_OPA_20, 0);
+            lv_obj_set_style_opa(wifi_bar3, (bars_to_show >= 3) ? LV_OPA_COVER : LV_OPA_20, 0);
+            lv_obj_set_style_opa(wifi_bar4, (bars_to_show >= 4) ? LV_OPA_COVER : LV_OPA_20, 0);
+        }
         
         // Force redraw
         lv_obj_invalidate(wifi_bar1);
