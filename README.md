@@ -99,10 +99,14 @@ precisionpour/
 
 ## Hardware Configuration
 
-### Display
-- Display driver: ILI9341 (320x240 TFT)
-- Touch controller: XPT2046 (SPI)
+### Display: 2.8" ESP32-32E Display Module
+- **Display driver**: ILI9341 (240x320 TFT, landscape 320x240)
+- **Touch controller**: XPT2046 (resistive touchscreen)
+- **LCD SPI pins**: GPIO13 (MOSI), GPIO12 (MISO), GPIO14 (SCLK), GPIO15 (CS), GPIO2 (DC), GPIO4 (RST), GPIO21 (BL)
+- **Touch SPI pins**: GPIO25 (SCLK), GPIO32 (MOSI), GPIO39 (MISO), GPIO33 (CS), GPIO36 (IRQ)
+- **Note**: Touch screen uses a **separate SPI bus** from the LCD
 - Pin connections defined in `include/config.h`
+- Full pinout documentation: [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md)
 
 ### Flow Meter
 - **YF-S201 Hall Effect Flow Sensor**
@@ -110,6 +114,7 @@ precisionpour/
 - Accuracy: ±10%
 - Pulses per liter: 450
 - Connected to GPIO 25 (interrupt-capable pin)
+- **Note**: GPIO25 is also used for TOUCH_SCLK - see pin conflicts in [hardware docs](docs/HARDWARE_SETUP.md)
 - Wiring:
   - Red wire → 5V
   - Black wire → GND
