@@ -218,6 +218,53 @@ void production_mode_init() {
         #endif
     }
     
+    // Create WiFi status icon in bottom left corner
+    Serial.println("[Production UI] Creating WiFi status icon...");
+    wifi_status_container = lv_obj_create(lv_scr_act());
+    if (wifi_status_container != NULL) {
+        // Container for WiFi icon (30x30 pixels to fit the arcs)
+        lv_obj_set_size(wifi_status_container, 30, 30);
+        lv_obj_align(wifi_status_container, LV_ALIGN_BOTTOM_LEFT, 5, -5);
+        lv_obj_set_style_bg_opa(wifi_status_container, LV_OPA_TRANSP, 0);  // Transparent background
+        lv_obj_set_style_border_width(wifi_status_container, 0, 0);
+        lv_obj_set_style_pad_all(wifi_status_container, 0, 0);
+        lv_obj_clear_flag(wifi_status_container, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // Create WiFi signal arcs (typical WiFi icon: 3 arcs)
+        // Arc 1 (outermost) - 120 degrees, from 210 to 330
+        wifi_arc1 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc1, 24, 24);
+        lv_arc_set_bg_angles(wifi_arc1, 210, 330);
+        lv_arc_set_angles(wifi_arc1, 210, 330);
+        lv_obj_remove_style(wifi_arc1, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc1, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc1, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc1, LV_ALIGN_CENTER, 0, 0);
+        
+        // Arc 2 (middle) - 120 degrees, from 210 to 330
+        wifi_arc2 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc2, 18, 18);
+        lv_arc_set_bg_angles(wifi_arc2, 210, 330);
+        lv_arc_set_angles(wifi_arc2, 210, 330);
+        lv_obj_remove_style(wifi_arc2, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc2, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc2, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc2, LV_ALIGN_CENTER, 0, 0);
+        
+        // Arc 3 (innermost) - 120 degrees, from 210 to 330
+        wifi_arc3 = lv_arc_create(wifi_status_container);
+        lv_obj_set_size(wifi_arc3, 12, 12);
+        lv_arc_set_bg_angles(wifi_arc3, 210, 330);
+        lv_arc_set_angles(wifi_arc3, 210, 330);
+        lv_obj_remove_style(wifi_arc3, NULL, LV_PART_KNOB);
+        lv_obj_set_style_arc_width(wifi_arc3, 2, 0);
+        lv_obj_set_style_arc_color(wifi_arc3, lv_color_hex(0xFF0000), 0);  // Red initially
+        lv_obj_align(wifi_arc3, LV_ALIGN_CENTER, 0, 0);
+        
+        Serial.println("[Production UI] WiFi status icon created");
+    }
+    lv_timer_handler();
+    
     // Force refresh to show everything
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
