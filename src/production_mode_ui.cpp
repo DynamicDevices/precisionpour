@@ -26,8 +26,9 @@ static lv_obj_t *wifi_bar2 = NULL;  // WiFi signal bar 2
 static lv_obj_t *wifi_bar3 = NULL;  // WiFi signal bar 3
 static lv_obj_t *wifi_bar4 = NULL;  // WiFi signal bar 4 (tallest)
 static lv_obj_t *comm_status_container = NULL;  // Communication activity icon container
-static lv_obj_t *comm_arrow_up = NULL;  // Upload/transmit arrow
-static lv_obj_t *comm_arrow_down = NULL;  // Download/receive arrow
+static lv_obj_t *comm_spark1 = NULL;  // Spark/pulse element 1
+static lv_obj_t *comm_spark2 = NULL;  // Spark/pulse element 2
+static lv_obj_t *comm_spark3 = NULL;  // Spark/pulse element 3
 
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
@@ -276,7 +277,7 @@ void production_mode_init() {
     }
     lv_timer_handler();
     
-    // Create communication activity icon in bottom right corner
+    // Create communication activity icon in bottom right corner (electric pulse/spark)
     Serial.println("[Production UI] Creating communication activity icon...");
     comm_status_container = lv_obj_create(lv_scr_act());
     if (comm_status_container != NULL) {
@@ -288,23 +289,33 @@ void production_mode_init() {
         lv_obj_set_style_pad_all(comm_status_container, 0, 0);
         lv_obj_clear_flag(comm_status_container, LV_OBJ_FLAG_SCROLLABLE);
         
-        // Create upload arrow (pointing up) - for transmit
-        comm_arrow_up = lv_obj_create(comm_status_container);
-        lv_obj_set_size(comm_arrow_up, 8, 6);
-        lv_obj_set_style_bg_opa(comm_arrow_up, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(comm_arrow_up, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
-        lv_obj_set_style_border_width(comm_arrow_up, 0, 0);
-        lv_obj_set_style_radius(comm_arrow_up, 1, 0);
-        lv_obj_align(comm_arrow_up, LV_ALIGN_TOP_MID, 0, 0);
+        // Create spark/pulse elements (zigzag pattern like electric pulse)
+        // Spark 1 (left, small)
+        comm_spark1 = lv_obj_create(comm_status_container);
+        lv_obj_set_size(comm_spark1, 2, 6);
+        lv_obj_set_style_bg_opa(comm_spark1, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(comm_spark1, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
+        lv_obj_set_style_border_width(comm_spark1, 0, 0);
+        lv_obj_set_style_radius(comm_spark1, 1, 0);
+        lv_obj_align(comm_spark1, LV_ALIGN_LEFT_MID, 4, 0);
         
-        // Create download arrow (pointing down) - for receive
-        comm_arrow_down = lv_obj_create(comm_status_container);
-        lv_obj_set_size(comm_arrow_down, 8, 6);
-        lv_obj_set_style_bg_opa(comm_arrow_down, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(comm_arrow_down, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
-        lv_obj_set_style_border_width(comm_arrow_down, 0, 0);
-        lv_obj_set_style_radius(comm_arrow_down, 1, 0);
-        lv_obj_align(comm_arrow_down, LV_ALIGN_BOTTOM_MID, 0, 0);
+        // Spark 2 (center, medium) - main pulse
+        comm_spark2 = lv_obj_create(comm_status_container);
+        lv_obj_set_size(comm_spark2, 3, 10);
+        lv_obj_set_style_bg_opa(comm_spark2, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(comm_spark2, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
+        lv_obj_set_style_border_width(comm_spark2, 0, 0);
+        lv_obj_set_style_radius(comm_spark2, 1, 0);
+        lv_obj_align(comm_spark2, LV_ALIGN_CENTER, 0, 0);
+        
+        // Spark 3 (right, small)
+        comm_spark3 = lv_obj_create(comm_status_container);
+        lv_obj_set_size(comm_spark3, 2, 6);
+        lv_obj_set_style_bg_opa(comm_spark3, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(comm_spark3, lv_color_hex(0x808080), 0);  // Gray initially (no activity)
+        lv_obj_set_style_border_width(comm_spark3, 0, 0);
+        lv_obj_set_style_radius(comm_spark3, 1, 0);
+        lv_obj_align(comm_spark3, LV_ALIGN_RIGHT_MID, -4, 0);
         
         Serial.println("[Production UI] Communication activity icon created");
     }
