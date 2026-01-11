@@ -20,7 +20,7 @@ static lv_obj_t *qr_code = NULL;
 static lv_obj_t *label_qr_text = NULL;
 
 // Brand colors (matching PrecisionPour branding)
-#define COLOR_BACKGROUND lv_color_hex(0x161716) // Background color from logo image (RGB 22,23,22)
+#define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
 #define COLOR_GOLDEN lv_color_hex(0xFFD700) // Golden yellow (branding color)
 
