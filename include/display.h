@@ -10,17 +10,13 @@
  * Display Driver Interface
  * 
  * Abstract interface for display operations.
- * Implement this for your specific display library (TFT_eSPI, LVGL, etc.)
+ * Implement this for your specific display library (LVGL, etc.)
  */
 
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#ifdef ESP_PLATFORM
-    #include <stdint.h>
-#else
-    #include <Arduino.h>
-#endif
+#include <stdint.h>
 
 class Display {
 public:

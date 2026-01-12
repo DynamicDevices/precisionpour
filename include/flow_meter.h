@@ -42,10 +42,6 @@
         #include "esp_idf_compat.h"
     #endif
     #include <stdint.h>
-#else
-    // Arduino framework
-    #include <Arduino.h>
-    #include <stdint.h>
 #endif
 
 // Flow meter initialization

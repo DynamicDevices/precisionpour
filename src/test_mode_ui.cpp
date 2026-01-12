@@ -26,9 +26,6 @@
     
     // Project compatibility headers
     #include "esp_idf_compat.h"
-#else
-    // Arduino framework headers
-    #include <Arduino.h>
 #endif
 
 // UI objects
@@ -69,19 +66,11 @@ static lv_obj_t *btn_rfid_scan;
 static void color_test_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     
-    #ifdef ESP_PLATFORM
-        // Log all events to see what's happening
-        ESP_LOGI(TAG, "[Button] Event received: code=%d (CLICKED=%d)", code, LV_EVENT_CLICKED);
-    #else
-        Serial.printf("[Button] Event received: code=%d (CLICKED=%d)\r\n", code, LV_EVENT_CLICKED);
-    #endif
+    // Log all events to see what's happening
+    ESP_LOGI(TAG, "[Button] Event received: code=%d (CLICKED=%d)", code, LV_EVENT_CLICKED);
     
     if (code == LV_EVENT_CLICKED) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Button] *** COLOR TEST BUTTON CLICKED ***");
-        #else
-            Serial.println("[Button] *** COLOR TEST BUTTON CLICKED ***");
-        #endif
+        ESP_LOGI(TAG, "[Button] *** COLOR TEST BUTTON CLICKED ***");
         static uint8_t color_index = 0;
         const lv_color_t colors[] = {
             LV_COLOR_MAKE(255, 0, 0),    // Red
@@ -100,17 +89,9 @@ static void color_test_cb(lv_event_t *e) {
         color_index = (color_index + 1) % 8;
         lv_obj_set_style_bg_color(lv_scr_act(), colors[color_index], 0);
         lv_label_set_text_fmt(label_color_status, "Color: %s", color_names[color_index]);
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Button] Display test: Color changed to %s", color_names[color_index]);
-        #else
-            Serial.printf("[Button] Display test: Color changed to %s\r\n", color_names[color_index]);
-        #endif
+        ESP_LOGI(TAG, "[Button] Display test: Color changed to %s", color_names[color_index]);
     } else {
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Button] Event code %d is not CLICKED, ignoring", code);
-        #else
-            Serial.printf("[Button] Event code %d is not CLICKED, ignoring\r\n", code);
-        #endif
+        ESP_LOGI(TAG, "[Button] Event code %d is not CLICKED, ignoring", code);
     }
 }
 
@@ -120,21 +101,13 @@ static void rfid_scan_cb(lv_event_t *e) {
     if (code == LV_EVENT_CLICKED) {
         lv_label_set_text(label_rfid_status, "Scanning...");
         lv_label_set_text(label_rfid_id, "No tag detected");
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "RFID: Scan initiated (not implemented yet)");
-        #else
-            Serial.println("RFID: Scan initiated (not implemented yet)");
-        #endif
+        ESP_LOGI(TAG, "RFID: Scan initiated (not implemented yet)");
         // TODO: Implement RFID scanning
     }
 }
 
 void test_mode_init() {
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "\n=== Initializing Test Mode UI ===");
-    #else
-        Serial.println("\n=== Initializing Test Mode UI ===");
-    #endif
+    ESP_LOGI(TAG, "\n=== Initializing Test Mode UI ===");
     
     // Clear screen
     lv_obj_clean(lv_scr_act());
@@ -167,11 +140,7 @@ void test_mode_init() {
     if (test_logo_img != NULL) {
         lv_img_set_src(test_logo_img, &test_logo);
         lv_obj_align(test_logo_img, LV_ALIGN_TOP_MID, 0, 80);
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Test UI] Test logo created (color bars for color testing)");
-        #else
-            Serial.println("[Test UI] Test logo created (color bars for color testing)");
-        #endif
+        ESP_LOGI(TAG, "[Test UI] Test logo created (color bars for color testing)");
     }
     
     btn_color_test = lv_btn_create(tab_display);
@@ -183,15 +152,7 @@ void test_mode_init() {
     lv_obj_add_event_cb(btn_color_test, color_test_cb, LV_EVENT_PRESSED, NULL);
     lv_obj_add_event_cb(btn_color_test, color_test_cb, LV_EVENT_RELEASED, NULL);
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Test UI] Color test button created and event handlers registered");
-    #else
-        #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Test UI] Color test button created and event handlers registered");
-    #else
-        Serial.println("[Test UI] Color test button created and event handlers registered");
-    #endif
-    #endif
+    ESP_LOGI(TAG, "[Test UI] Color test button created and event handlers registered");
     
     lv_obj_t *btn_label = lv_label_create(btn_color_test);
     lv_label_set_text(btn_label, "Test Colors");
@@ -271,11 +232,7 @@ void test_mode_init() {
     lv_label_set_text(label_rfid_id, "No tag detected");
     lv_obj_align(label_rfid_id, LV_ALIGN_BOTTOM_MID, 0, -20);
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "Test Mode UI initialized");
-    #else
-        Serial.println("Test Mode UI initialized");
-    #endif
+    ESP_LOGI(TAG, "Test Mode UI initialized");
 }
 
 void test_mode_update() {

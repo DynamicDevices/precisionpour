@@ -14,13 +14,9 @@
  */
 
 #include "ui.h"
-#ifdef ESP_PLATFORM
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
-    #define TAG "ui"
-#else
-    #include <Arduino.h>
-#endif
+#include "esp_idf_compat.h"
+#include "esp_log.h"
+#define TAG "ui"
 
 // UI objects
 static lv_obj_t *label_title;
@@ -36,7 +32,7 @@ static void btn_event_cb(lv_event_t *e) {
     if (code == LV_EVENT_CLICKED) {
         counter++;
         lv_label_set_text_fmt(label_counter, "Clicks: %ld", counter);
-        Serial.printf("Button clicked! Count: %ld\r\n", counter);
+        ESP_LOGI(TAG, "Button clicked! Count: %ld", counter);
     }
 }
 
@@ -70,7 +66,7 @@ void ui_init() {
     lv_label_set_text_fmt(label_counter, "Clicks: %ld", counter);
     lv_obj_align(label_counter, LV_ALIGN_CENTER, 0, 40);
     
-    Serial.println("UI initialized");
+    ESP_LOGI(TAG, "UI initialized");
 }
 
 void ui_update() {

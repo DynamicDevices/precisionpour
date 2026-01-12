@@ -9,7 +9,7 @@
 /**
  * LVGL Display Driver Integration
  * 
- * Integrates TFT_eSPI display with LVGL graphics library.
+ * Integrates ILI9341 display with LVGL graphics library using ESP-IDF SPI driver.
  */
 
 #ifndef LVGL_DISPLAY_H
@@ -21,12 +21,6 @@
 // Display buffer size (adjust based on available RAM)
 // Using 1/10 of screen size for double buffering
 #define LVGL_BUFFER_SIZE (DISPLAY_WIDTH * DISPLAY_HEIGHT / 10)
-
-// Display object (forward declaration) - only for Arduino
-#ifndef CONFIG_TFT_MOSI
-class TFT_eSPI;
-extern TFT_eSPI tft;
-#endif
 
 /**
  * Initialize LVGL display driver

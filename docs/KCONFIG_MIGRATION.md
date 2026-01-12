@@ -105,7 +105,6 @@ The KConfig menu is organized into the following categories:
 - Currency symbol
 
 ### Development Options
-- Wokwi simulator mode
 - Debug level
 
 ## Configuration File Locations

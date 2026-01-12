@@ -16,12 +16,8 @@
 #ifndef TOUCH_H
 #define TOUCH_H
 
-#ifdef ESP_PLATFORM
-    #include <stdint.h>
-    #include <stdbool.h>
-#else
-    #include <Arduino.h>
-#endif
+#include <stdint.h>
+#include <stdbool.h>
 
 struct TouchPoint {
     int16_t x;

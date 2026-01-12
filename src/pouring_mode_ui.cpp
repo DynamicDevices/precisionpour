@@ -24,17 +24,12 @@
 #include <lvgl.h>
 #include <string.h>
 
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework headers
-    #include <esp_log.h>
-    #define TAG "pouring_ui"
-    
-    // Project compatibility headers
-    #include "esp_idf_compat.h"
-#else
-    // Arduino framework headers
-    #include <Arduino.h>
-#endif
+// ESP-IDF framework headers
+#include <esp_log.h>
+#define TAG "pouring_ui"
+
+// Project compatibility headers
+#include "esp_idf_compat.h"
 
 // UI objects
 static lv_obj_t *logo_container = NULL;
@@ -81,21 +76,11 @@ static void (*screen_switch_callback)(void) = NULL;
 static void pouring_screen_touch_cb(lv_event_t *e);
 
 void pouring_mode_init() {
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "\n=== Initializing Pouring Mode UI ===");
-    #else
-        Serial.println("\n=== Initializing Pouring Mode UI ===");
-        Serial.flush();
-    #endif
+    ESP_LOGI(TAG, "\n=== Initializing Pouring Mode UI ===");
     
     // Ensure LVGL is ready
     if (lv_scr_act() == NULL) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "[Pouring UI] ERROR: No active screen!");
-        #else
-            Serial.println("[Pouring UI] ERROR: No active screen!");
-            Serial.flush();
-        #endif
+        ESP_LOGE(TAG, "[Pouring UI] ERROR: No active screen!");
         return;
     }
     
@@ -114,20 +99,10 @@ void pouring_mode_init() {
     delay(5);
     
     // Create logo area at the top (same as production mode)
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Creating logo from image...");
-    #else
-        Serial.println("[Pouring UI] Creating logo from image...");
-        Serial.flush();
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Creating logo from image...");
     logo_container = lv_obj_create(lv_scr_act());
     if (logo_container == NULL) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "[Pouring UI] ERROR: Failed to create logo container!");
-        #else
-            Serial.println("[Pouring UI] ERROR: Failed to create logo container!");
-            Serial.flush();
-        #endif
+        ESP_LOGE(TAG, "[Pouring UI] ERROR: Failed to create logo container!");
         return;
     }
     
@@ -143,12 +118,7 @@ void pouring_mode_init() {
     // Create logo image object
     lv_obj_t *logo_img = lv_img_create(logo_container);
     if (logo_img == NULL) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "[Pouring UI] ERROR: Failed to create logo image object!");
-        #else
-            Serial.println("[Pouring UI] ERROR: Failed to create logo image object!");
-            Serial.flush();
-        #endif
+        ESP_LOGE(TAG, "[Pouring UI] ERROR: Failed to create logo image object!");
         return;
     }
     
@@ -165,12 +135,7 @@ void pouring_mode_init() {
     delay(10);
     lv_timer_handler();
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Logo created from image");
-    #else
-        Serial.println("[Pouring UI] Logo created from image");
-        Serial.flush();
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Logo created from image");
     
     // Create pouring information labels (below logo)
     // Flow Rate
@@ -248,11 +213,7 @@ void pouring_mode_init() {
     }
     
     // Create WiFi status icon in bottom left corner (same as production mode)
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Creating WiFi status icon...");
-    #else
-        Serial.println("[Pouring UI] Creating WiFi status icon...");
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Creating WiFi status icon...");
     wifi_status_container = lv_obj_create(lv_scr_act());
     if (wifi_status_container != NULL) {
         // Container for WiFi icon (20x20 pixels)
@@ -299,20 +260,12 @@ void pouring_mode_init() {
         lv_obj_set_style_radius(wifi_bar4, 1, 0);
         lv_obj_align(wifi_bar4, LV_ALIGN_BOTTOM_LEFT, 17, -1);
         
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Pouring UI] WiFi status icon created");
-        #else
-            Serial.println("[Pouring UI] WiFi status icon created");
-        #endif
+        ESP_LOGI(TAG, "[Pouring UI] WiFi status icon created");
     }
     lv_timer_handler();
     
     // Create communication activity icon in bottom right corner (same as production mode)
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Creating communication activity icon...");
-    #else
-        Serial.println("[Pouring UI] Creating communication activity icon...");
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Creating communication activity icon...");
     comm_status_container = lv_obj_create(lv_scr_act());
     if (comm_status_container != NULL) {
         // Container for communication icon (20x20 pixels)
@@ -351,11 +304,7 @@ void pouring_mode_init() {
         lv_obj_set_style_radius(comm_spark3, 1, 0);
         lv_obj_align(comm_spark3, LV_ALIGN_RIGHT_MID, -4, 0);
         
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Pouring UI] Communication activity icon created");
-        #else
-            Serial.println("[Pouring UI] Communication activity icon created");
-        #endif
+        ESP_LOGI(TAG, "[Pouring UI] Communication activity icon created");
     }
     lv_timer_handler();
     
@@ -368,12 +317,7 @@ void pouring_mode_init() {
         delay(5);
     }
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "Pouring Mode UI initialized");
-    #else
-        Serial.println("Pouring Mode UI initialized");
-        Serial.flush();
-    #endif
+    ESP_LOGI(TAG, "Pouring Mode UI initialized");
 }
 
 // Touch event callback for pouring screen - switch back to main screen on tap
@@ -381,21 +325,13 @@ static void pouring_screen_touch_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     
     if (code == LV_EVENT_CLICKED) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Pouring UI] Screen tapped - switching to main screen");
-        #else
-            Serial.println("[Pouring UI] Screen tapped - switching to main screen");
-        #endif
+        ESP_LOGI(TAG, "[Pouring UI] Screen tapped - switching to main screen");
         
         // Call the callback to switch back to main screen
         if (screen_switch_callback != NULL) {
             screen_switch_callback();
         } else {
-            #ifdef ESP_PLATFORM
-                ESP_LOGE(TAG, "[Pouring UI] ERROR: screen_switch_callback is NULL!");
-            #else
-                Serial.println("[Pouring UI] ERROR: screen_switch_callback is NULL!");
-            #endif
+            ESP_LOGE(TAG, "[Pouring UI] ERROR: screen_switch_callback is NULL!");
         }
     }
 }
@@ -440,11 +376,7 @@ void pouring_mode_update() {
         // Check if max ml reached
         if (volume_ml >= max_ml) {
             // Max reached - could trigger stop here or show warning
-            #ifdef ESP_PLATFORM
-                ESP_LOGW(TAG, "[Pouring] Maximum volume reached!");
-            #else
-                Serial.println("[Pouring] Maximum volume reached!");
-            #endif
+            ESP_LOGW(TAG, "[Pouring] Maximum volume reached!");
         }
     }
     
@@ -578,11 +510,7 @@ void pouring_mode_reset() {
 void pouring_mode_set_cost_per_unit(float cost) {
     // Convert cost per liter to cost per ml
     cost_per_ml = cost / 1000.0;
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Cost per unit updated to: £%.2f/L (%.4f/ml)", cost, cost_per_ml);
-    #else
-        Serial.printf("[Pouring UI] Cost per unit updated to: £%.2f/L (%.4f/ml)\r\n", cost, cost_per_ml);
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Cost per unit updated to: £%.2f/L (%.4f/ml)", cost, cost_per_ml);
 }
 
 // Helper function to parse currency string and return symbol
@@ -609,11 +537,7 @@ static const char* parse_currency(const char* currency_str) {
     }
     
     // If not recognized, use default (GBP for pounds)
-    #ifdef ESP_PLATFORM
-        ESP_LOGW(TAG, "[Pouring UI] Warning: Unrecognized currency code '%s', defaulting to GBP", currency_str);
-    #else
-        Serial.printf("[Pouring UI] Warning: Unrecognized currency code '%s', defaulting to GBP\r\n", currency_str);
-    #endif
+    ESP_LOGW(TAG, "[Pouring UI] Warning: Unrecognized currency code '%s', defaulting to GBP", currency_str);
     return "GBP ";
 }
 
@@ -631,19 +555,11 @@ void pouring_mode_start_pour(const char* unique_id, float cost_per_ml_param, int
     strncpy(currency_symbol, currency_sym, sizeof(currency_symbol) - 1);
     currency_symbol[sizeof(currency_symbol) - 1] = '\0';
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Starting pour:");
-        ESP_LOGI(TAG, "  ID: %s", pour_unique_id);
-        ESP_LOGI(TAG, "  Cost per ml: %s%.4f", currency_symbol, cost_per_ml);
-        ESP_LOGI(TAG, "  Max ml: %d", max_ml);
-        ESP_LOGI(TAG, "  Currency: %s", currency_symbol);
-    #else
-        Serial.printf("[Pouring UI] Starting pour:\r\n");
-        Serial.printf("  ID: %s\r\n", pour_unique_id);
-        Serial.printf("  Cost per ml: %s%.4f\r\n", currency_symbol, cost_per_ml);
-        Serial.printf("  Max ml: %d\r\n", max_ml);
-        Serial.printf("  Currency: %s\r\n", currency_symbol);
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Starting pour:");
+    ESP_LOGI(TAG, "  ID: %s", pour_unique_id);
+    ESP_LOGI(TAG, "  Cost per ml: %s%.4f", currency_symbol, cost_per_ml);
+    ESP_LOGI(TAG, "  Max ml: %d", max_ml);
+    ESP_LOGI(TAG, "  Currency: %s", currency_symbol);
     
     // Reset volume counter
     flow_meter_reset_volume();
@@ -664,19 +580,11 @@ void pouring_mode_update_pour_params(const char* unique_id, float cost_per_ml_pa
     strncpy(currency_symbol, currency_sym, sizeof(currency_symbol) - 1);
     currency_symbol[sizeof(currency_symbol) - 1] = '\0';
     
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Pouring UI] Updated pour parameters:");
-        ESP_LOGI(TAG, "  ID: %s", pour_unique_id);
-        ESP_LOGI(TAG, "  Cost per ml: %s%.4f", currency_symbol, cost_per_ml);
-        ESP_LOGI(TAG, "  Max ml: %d", max_ml);
-        ESP_LOGI(TAG, "  Currency: %s", currency_symbol);
-    #else
-        Serial.printf("[Pouring UI] Updated pour parameters:\r\n");
-        Serial.printf("  ID: %s\r\n", pour_unique_id);
-        Serial.printf("  Cost per ml: %s%.4f\r\n", currency_symbol, cost_per_ml);
-        Serial.printf("  Max ml: %d\r\n", max_ml);
-        Serial.printf("  Currency: %s\r\n", currency_symbol);
-    #endif
+    ESP_LOGI(TAG, "[Pouring UI] Updated pour parameters:");
+    ESP_LOGI(TAG, "  ID: %s", pour_unique_id);
+    ESP_LOGI(TAG, "  Cost per ml: %s%.4f", currency_symbol, cost_per_ml);
+    ESP_LOGI(TAG, "  Max ml: %d", max_ml);
+    ESP_LOGI(TAG, "  Currency: %s", currency_symbol);
 }
 
 // Check if maximum ml has been reached

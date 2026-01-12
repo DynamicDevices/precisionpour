@@ -5,7 +5,6 @@
  * ESP System Compatibility Layer Implementation
  */
 
-#ifdef ESP_PLATFORM
 #include "esp_system_compat.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
@@ -101,31 +100,3 @@ bool get_soc_uid_string(char* uid_string, size_t uid_string_size) {
     
     return false;
 }
-
-#else
-// Arduino framework
-#include "esp_system_compat.h"
-#include <Arduino.h>
-#include <esp_efuse.h>
-#include <string.h>
-
-// Get SOC UID (for Arduino, use MAC address as unique identifier)
-bool get_soc_uid_string(char* uid_string, size_t uid_string_size) {
-    if (uid_string == NULL || uid_string_size < 13) {
-        return false;  // Need at least 13 bytes (12 hex chars + null)
-    }
-    
-    // Arduino: Use MAC address as unique identifier
-    uint8_t mac[6];
-    esp_err_t ret = esp_efuse_mac_get_default(mac);
-    
-    if (ret == ESP_OK) {
-        snprintf(uid_string, uid_string_size, "%02X%02X%02X%02X%02X%02X",
-                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        return true;
-    }
-    
-    return false;
-}
-
-#endif // ESP_PLATFORM

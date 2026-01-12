@@ -15,15 +15,9 @@
 #ifndef MQTT_MANAGER_H
 #define MQTT_MANAGER_H
 
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework
-    #include <stdint.h>
-    typedef uint8_t byte;
-#else
-    // Arduino framework
-    #include <PubSubClient.h>
-    #include <WiFiClient.h>
-#endif
+// ESP-IDF framework
+#include <stdint.h>
+typedef uint8_t byte;
 
 // MQTT connection status
 bool mqtt_client_init(const char* chip_id);

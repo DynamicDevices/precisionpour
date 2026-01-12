@@ -12,19 +12,14 @@
 #include "mqtt_connection.h"
 
 // System/Standard library headers
-#ifdef ESP_PLATFORM
-    #include <esp_log.h>
-    #include <mqtt_client.h>  // ESP-IDF MQTT client component
-    #include <cstring>
-    #include <string.h>
-    #define TAG "mqtt_msg"
-    
-    // Project compatibility headers
-    #include "esp_idf_compat.h"
-#else
-    #include <Arduino.h>
-    #include <PubSubClient.h>
-#endif
+#include <esp_log.h>
+#include <mqtt_client.h>  // ESP-IDF MQTT client component
+#include <cstring>
+#include <string.h>
+#define TAG "mqtt_msg"
+
+// Project compatibility headers
+#include "esp_idf_compat.h"
 
 // Activity tracking
 static unsigned long last_activity_time = 0;
@@ -36,7 +31,6 @@ static void (*user_callback)(char* topic, byte* payload, unsigned int length) = 
 // Include mqtt_connection.h for state updates
 #include "mqtt_connection.h"
 
-#ifdef ESP_PLATFORM
 // ESP-IDF: MQTT event handler
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
@@ -124,45 +118,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
     }
 }
-#else
-// Arduino: PubSubClient callback (must be non-static for PubSubClient)
-void mqtt_callback(char* topic, byte* payload, unsigned int length) {
-    // Mark activity (message received)
-    mqtt_messages_mark_activity();
-    
-    // Null-terminate the payload
-    char message[256] = {0};
-    if (length < sizeof(message)) {
-        memcpy(message, payload, length);
-        message[length] = '\0';
-    } else {
-        memcpy(message, payload, sizeof(message) - 1);
-    }
-    
-    Serial.printf("[MQTT] Message received on topic: %s\r\n", topic);
-    Serial.printf("[MQTT] Message: %s\r\n", message);
-    
-    // Call user callback if set
-    if (user_callback != NULL) {
-        user_callback(topic, payload, length);
-    }
-}
-#endif
 
 void mqtt_messages_init(void* client_handle) {
-    #ifdef ESP_PLATFORM
-        // ESP-IDF: Register event handler
-        esp_mqtt_client_handle_t handle = (esp_mqtt_client_handle_t)client_handle;
-        if (handle != NULL) {
-            esp_mqtt_client_register_event(handle, MQTT_EVENT_ANY, mqtt_event_handler, NULL);
-        }
-    #else
-        // Arduino: Set callback
-        PubSubClient* client = (PubSubClient*)client_handle;
-        if (client != NULL) {
-            client->setCallback(mqtt_callback);
-        }
-    #endif
+    // ESP-IDF: Register event handler
+    esp_mqtt_client_handle_t handle = (esp_mqtt_client_handle_t)client_handle;
+    if (handle != NULL) {
+        esp_mqtt_client_register_event(handle, MQTT_EVENT_ANY, mqtt_event_handler, NULL);
+    }
 }
 
 void mqtt_messages_set_callback(void (*callback)(char* topic, byte* payload, unsigned int length)) {

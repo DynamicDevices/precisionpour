@@ -358,13 +358,6 @@ menu "PrecisionPour Configuration"
     endmenu
 
     menu "Development Options"
-        config WOKWI_SIMULATOR
-            bool "Enable Wokwi Simulator Mode"
-            default n
-            help
-                Enable Wokwi simulator workaround mode
-                Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
-
         config DEBUG_LEVEL
             int "Debug Level"
             range 0 5

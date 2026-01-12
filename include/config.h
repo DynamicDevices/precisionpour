@@ -106,7 +106,6 @@
     #define COST_PER_UNIT_DEFAULT 5.00  // Fallback, actual value from CONFIG_COST_PER_UNIT_DEFAULT
     #define CURRENCY_SYMBOL CONFIG_CURRENCY_SYMBOL
     
-    #define WOKWI_SIMULATOR CONFIG_WOKWI_SIMULATOR
     
 #else
     // Arduino Framework: Use #define fallbacks
@@ -160,11 +159,6 @@
     #undef MQTT_KEEPALIVE
     #endif
     #define MQTT_KEEPALIVE 60                    // MQTT keepalive interval (seconds)
-
-    // Wokwi simulator workaround
-    // Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
-    // In Wokwi, clicking the display should trigger the IRQ pin
-    #define WOKWI_SIMULATOR 0  // Set to 1 when running in Wokwi, 0 for real hardware
 
     // Flow meter pin (YF-S201 Hall Effect Flow Sensor)
     // Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK

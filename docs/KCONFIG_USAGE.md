@@ -104,7 +104,7 @@ float get_cost_per_unit() {
 - `CURRENCY_SYMBOL` (string)
 
 ### Development
-- `WOKWI_SIMULATOR` (0 or 1)
+- `DEBUG_LEVEL` (integer)
 
 ## Example: Reading Configuration
 

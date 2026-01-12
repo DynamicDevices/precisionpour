@@ -17,24 +17,18 @@
 #include "lvgl_touch.h"
 
 // System/Standard library headers
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework headers
-    #include <driver/gpio.h>
-    #include <esp_log.h>
-    #define TAG "touch"
-    
-    // Project compatibility headers
-    #include "esp_idf_compat.h"
-    
-    // Arduino map() function compatibility
-    static inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
-        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-    }
-#else
-    // Arduino framework headers
-    #include <Arduino.h>
-    #include <SPI.h>
-#endif
+// ESP-IDF framework headers
+#include <driver/gpio.h>
+#include <esp_log.h>
+#define TAG "touch"
+
+// Project compatibility headers
+#include "esp_idf_compat.h"
+
+// Arduino map() function compatibility
+static inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 // Touch screen uses its own SPI bus (separate from LCD SPI)
 // LCD SPI: GPIO14(SCLK), GPIO13(MOSI), GPIO12(MISO)
@@ -195,33 +189,20 @@ static void xpt2046_read_coords(int16_t *x, int16_t *y) {
 }
 
 void lvgl_touch_init() {
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Touch] Initializing touch controller...");
-    #else
-        Serial.println("[Touch] Initializing touch controller...");
-    #endif
+    ESP_LOGI(TAG, "[Touch] Initializing touch controller...");
     
     // Configure CS pin
     pinMode(TOUCH_CS, OUTPUT);
     digitalWrite(TOUCH_CS, HIGH);
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Touch] CS pin configured: GPIO%d", TOUCH_CS);
-    #else
-        Serial.printf("[Touch] CS pin configured: GPIO%d\r\n", TOUCH_CS);
-    #endif
+    ESP_LOGI(TAG, "[Touch] CS pin configured: GPIO%d", TOUCH_CS);
     
     // Initialize touch SPI pins (separate SPI bus: GPIO25, GPIO32, GPIO39)
     pinMode(TOUCH_SCLK, OUTPUT);
     pinMode(TOUCH_MOSI, OUTPUT);
     pinMode(TOUCH_MISO, INPUT);
     digitalWrite(TOUCH_SCLK, HIGH);  // Idle high for SPI mode 0
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Touch] SPI pins configured: SCLK=GPIO%d, MOSI=GPIO%d, MISO=GPIO%d", 
-                  TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
-    #else
-        Serial.printf("[Touch] SPI pins configured: SCLK=GPIO%d, MOSI=GPIO%d, MISO=GPIO%d\r\n", 
-                      TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
-    #endif
+    ESP_LOGI(TAG, "[Touch] SPI pins configured: SCLK=GPIO%d, MOSI=GPIO%d, MISO=GPIO%d", 
+              TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
     
     // Configure IRQ pin
     if (TOUCH_IRQ >= 0) {
@@ -229,19 +210,10 @@ void lvgl_touch_init() {
         last_irq_state = digitalRead(TOUCH_IRQ);
         // Use FALLING edge only (LOW = pressed) to reduce false triggers
         attachInterrupt(digitalPinToInterrupt(TOUCH_IRQ), irq_handler, FALLING);
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Touch] IRQ pin configured: GPIO%d (initial state: %s, FALLING edge)", 
-                      TOUCH_IRQ, last_irq_state == LOW ? "LOW (pressed)" : "HIGH (not pressed)");
-        #else
-            Serial.printf("[Touch] IRQ pin configured: GPIO%d (initial state: %s, FALLING edge)\r\n", 
-                          TOUCH_IRQ, last_irq_state == LOW ? "LOW (pressed)" : "HIGH (not pressed)");
-        #endif
+        ESP_LOGI(TAG, "[Touch] IRQ pin configured: GPIO%d (initial state: %s, FALLING edge)", 
+                  TOUCH_IRQ, last_irq_state == LOW ? "LOW (pressed)" : "HIGH (not pressed)");
     } else {
-        #ifdef ESP_PLATFORM
-            ESP_LOGW(TAG, "[Touch] WARNING: No IRQ pin configured!");
-        #else
-            Serial.println("[Touch] WARNING: No IRQ pin configured!");
-        #endif
+        ESP_LOGW(TAG, "[Touch] WARNING: No IRQ pin configured!");
     }
     
     delay(10);
@@ -251,11 +223,7 @@ void lvgl_touch_init() {
     uint16_t test_y = xpt2046_read(XPT2046_CMD_Y);
     uint16_t test_z1 = xpt2046_read(XPT2046_CMD_Z1);
     uint16_t test_z2 = xpt2046_read(XPT2046_CMD_Z2);
-    #ifdef ESP_PLATFORM
-        ESP_LOGI(TAG, "[Touch] Initial read test: X=%d Y=%d Z1=%d Z2=%d", test_x, test_y, test_z1, test_z2);
-    #else
-        Serial.printf("[Touch] Initial read test: X=%d Y=%d Z1=%d Z2=%d\r\n", test_x, test_y, test_z1, test_z2);
-    #endif
+    ESP_LOGI(TAG, "[Touch] Initial read test: X=%d Y=%d Z1=%d Z2=%d", test_x, test_y, test_z1, test_z2);
     
     // Register LVGL touch input device
     static lv_indev_drv_t indev_drv;
@@ -265,17 +233,9 @@ void lvgl_touch_init() {
     lv_indev_t *indev = lv_indev_drv_register(&indev_drv);
     
     if (indev != NULL) {
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "[Touch] Touch controller initialized and registered with LVGL");
-        #else
-            Serial.println("[Touch] Touch controller initialized and registered with LVGL");
-        #endif
+        ESP_LOGI(TAG, "[Touch] Touch controller initialized and registered with LVGL");
     } else {
-        #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG, "[Touch] ERROR: Failed to register touch input device!");
-        #else
-            Serial.println("[Touch] ERROR: Failed to register touch input device!");
-        #endif
+        ESP_LOGE(TAG, "[Touch] ERROR: Failed to register touch input device!");
     }
 }
 
@@ -345,13 +305,8 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         // Log touch detection (throttled to avoid spam)
         unsigned long now = millis();
         if (now - last_log_time > 200 || !last_pressed) {  // Log every 200ms or on state change
-            #ifdef ESP_PLATFORM
-                ESP_LOGI(TAG, "[Touch] Pressed: X=%d Y=%d (IRQ=%d, Pressure=%d)", 
-                         x, y, irq_pressed, pressure_pressed);
-            #else
-                Serial.printf("[Touch] Pressed: X=%d Y=%d (IRQ=%d, Pressure=%d)\r\n", 
-                             x, y, irq_pressed, pressure_pressed);
-            #endif
+            ESP_LOGI(TAG, "[Touch] Pressed: X=%d Y=%d (IRQ=%d, Pressure=%d)", 
+                     x, y, irq_pressed, pressure_pressed);
             last_log_time = now;
             touch_count++;
         }
@@ -362,11 +317,7 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         
         // Log release (only on state change)
         if (last_pressed) {
-            #ifdef ESP_PLATFORM
                 ESP_LOGI(TAG, "[Touch] Released");
-            #else
-                Serial.println("[Touch] Released");
-            #endif
         }
         touch_pressed = false;
     }

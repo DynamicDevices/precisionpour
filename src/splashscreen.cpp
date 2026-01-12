@@ -18,17 +18,12 @@
 #include "splashscreen.h"
 
 // System/Standard library headers
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework headers
-    #include <esp_log.h>
-    #define TAG "splashscreen"
-    
-    // Project compatibility headers
-    #include "esp_idf_compat.h"
-#else
-    // Arduino framework headers
-    #include <Arduino.h>
-#endif
+// ESP-IDF framework headers
+#include <esp_log.h>
+#define TAG "splashscreen"
+
+// Project compatibility headers
+#include "esp_idf_compat.h"
 
 #if !TEST_MODE
     // Include the Precision Pour logo image (used for both splashscreen and main page)
@@ -61,15 +56,7 @@ void splashscreen_init() {
         lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     #else
         // Production mode: Use Precision Pour image
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Creating image object...");
-
-        #else
-
-            Serial.println("[Splashscreen] Creating image object...");
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Creating image object...");
         
         // Set background to pure black (RGB 0,0,0)
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
@@ -90,47 +77,14 @@ void splashscreen_init() {
         splashscreen_img = lv_img_create(lv_scr_act());
         
         // Load the embedded Precision Pour logo image
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Setting logo image source...");
-
-        #else
-
-            Serial.println("[Splashscreen] Setting logo image source...");
-
-        #endif
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Logo pointer: %p, data pointer: %p, data_size: %d",
-                     &precision_pour_logo, precision_pour_logo.data, precision_pour_logo.data_size);
-
-        #else
-
-            Serial.printf("[Splashscreen] Logo pointer: %p, data pointer: %p, data_size: %d\r\n",
-                     &precision_pour_logo, precision_pour_logo.data, precision_pour_logo.data_size);
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Setting logo image source...");
+        ESP_LOGI(TAG, "[Splashscreen] Logo pointer: %p, data pointer: %p, data_size: %d",
+                 &precision_pour_logo, precision_pour_logo.data, precision_pour_logo.data_size);
         
         if (precision_pour_logo.data == NULL) {
-            #ifdef ESP_PLATFORM
-
-                ESP_LOGI(TAG, "[Splashscreen] ERROR: Logo image data is NULL!");
-
-            #else
-
-                Serial.println("[Splashscreen] ERROR: Logo image data is NULL!");
-
-            #endif
+            ESP_LOGI(TAG, "[Splashscreen] ERROR: Logo image data is NULL!");
         } else {
-            #ifdef ESP_PLATFORM
-
-                ESP_LOGI(TAG, "[Splashscreen] Logo image data is valid, setting source...");
-
-            #else
-
-                Serial.println("[Splashscreen] Logo image data is valid, setting source...");
-
-            #endif
+            ESP_LOGI(TAG, "[Splashscreen] Logo image data is valid, setting source...");
             lv_img_set_src(splashscreen_img, &precision_pour_logo);
         }
         
@@ -144,48 +98,15 @@ void splashscreen_init() {
         lv_obj_invalidate(splashscreen_img);
         lv_refr_now(NULL);
         
-        #ifdef ESP_PLATFORM
-
-        
-            ESP_LOGI(TAG, "[Splashscreen] Image source set, processing LVGL...");
-
-        
-        #else
-
-        
-            Serial.println("[Splashscreen] Image source set, processing LVGL...");
-
-        
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Image source set, processing LVGL...");
         for (int i = 0; i < 10; i++) {
             lv_timer_handler();
             delay(5);
         }
         
-        #ifdef ESP_PLATFORM
-
-        
-            ESP_LOGI(TAG, "[Splashscreen] Precision Pour logo should be visible");
-
-        
-        #else
-
-        
-            Serial.println("[Splashscreen] Precision Pour logo should be visible");
-
-        
-        #endif
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Logo data pointer: %p, size: %d bytes", 
-                     precision_pour_logo.data, precision_pour_logo.data_size);
-
-        #else
-
-            Serial.printf("[Splashscreen] Logo data pointer: %p, size: %d bytes\r\n", 
-                     precision_pour_logo.data, precision_pour_logo.data_size);
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Precision Pour logo should be visible");
+        ESP_LOGI(TAG, "[Splashscreen] Logo data pointer: %p, size: %d bytes", 
+                 precision_pour_logo.data, precision_pour_logo.data_size);
         
         // The image already contains the branding, so we just add the progress bar overlay
     #endif
@@ -237,28 +158,11 @@ void splashscreen_init() {
     }
     
     #if TEST_MODE
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "Splashscreen displayed (test mode - simple)");
-        #else
-            Serial.println("Splashscreen displayed (test mode - simple)");
-        #endif
+        ESP_LOGI(TAG, "Splashscreen displayed (test mode - simple)");
     #else
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "Splashscreen displayed (production mode - Precision Pour image)");
-        #else
-            Serial.println("Splashscreen displayed (production mode - Precision Pour image)");
-        #endif
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "Image pointer: %p, Size: %dx%d", 
-                     &precision_pour_logo, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-
-        #else
-
-            Serial.printf("Image pointer: %p, Size: %dx%d\r\n", 
-                     &precision_pour_logo, DISPLAY_WIDTH, DISPLAY_HEIGHT);
-
-        #endif
+        ESP_LOGI(TAG, "Splashscreen displayed (production mode - Precision Pour image)");
+        ESP_LOGI(TAG, "Image pointer: %p, Size: %dx%d", 
+                 &precision_pour_logo, DISPLAY_WIDTH, DISPLAY_HEIGHT);
     #endif
 }
 
@@ -273,41 +177,10 @@ void splashscreen_set_progress(uint8_t percent) {
         // Process LVGL to update display
         lv_timer_handler();
         
-        #ifdef ESP_PLATFORM
-
-        
-            ESP_LOGI(TAG, "Progress: %d%%", percent);
-
-        
-        #else
-
-        
-            Serial.printf("Progress: %d%%\r\n", percent);
-
-        
-        #endif
-        #ifndef ESP_PLATFORM
-
-            Serial.flush();
-
-        #endif
+        ESP_LOGI(TAG, "Progress: %d%%", percent);
     } else {
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] WARNING: Cannot set progress - bar=%p active=%d", 
-                     progress_bar, splashscreen_active);
-
-        #else
-
-            Serial.printf("[Splashscreen] WARNING: Cannot set progress - bar=%p active=%d\r\n", 
-                     progress_bar, splashscreen_active);
-
-        #endif
-        #ifndef ESP_PLATFORM
-
-            Serial.flush();
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] WARNING: Cannot set progress - bar=%p active=%d", 
+                 progress_bar, splashscreen_active);
     }
 }
 
@@ -328,44 +201,16 @@ void splashscreen_set_status(const char *text) {
         // Process LVGL to update display
         lv_timer_handler();
         
-        #ifdef ESP_PLATFORM
-
-        
-            ESP_LOGI(TAG, "Status: %s", text);
-
-        
-        #else
-
-        
-            Serial.printf("Status: %s\r\n", text);
-
-        
-        #endif
+        ESP_LOGI(TAG, "Status: %s", text);
     }
 }
 
 void splashscreen_remove() {
-    #ifdef ESP_PLATFORM
-
-        ESP_LOGI(TAG, "[Splashscreen] Removing splashscreen elements...");
-
-    #else
-
-        Serial.println("[Splashscreen] Removing splashscreen elements...");
-
-    #endif
+    ESP_LOGI(TAG, "[Splashscreen] Removing splashscreen elements...");
     
     // Remove progress bar FIRST (before logo) so it disappears first
     if (progress_bar != NULL) {
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Removing progress bar...");
-
-        #else
-
-            Serial.println("[Splashscreen] Removing progress bar...");
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Removing progress bar...");
         lv_obj_del(progress_bar);
         progress_bar = NULL;
         lv_timer_handler();
@@ -380,15 +225,7 @@ void splashscreen_remove() {
     
     // Remove logo/image LAST (or at the same time)
     if (splashscreen_img != NULL) {
-        #ifdef ESP_PLATFORM
-
-            ESP_LOGI(TAG, "[Splashscreen] Removing logo...");
-
-        #else
-
-            Serial.println("[Splashscreen] Removing logo...");
-
-        #endif
+        ESP_LOGI(TAG, "[Splashscreen] Removing logo...");
         lv_obj_del(splashscreen_img);
         splashscreen_img = NULL;
     }
@@ -400,19 +237,7 @@ void splashscreen_remove() {
     delay(10);
     lv_timer_handler();
     
-    #ifdef ESP_PLATFORM
-
-    
-        ESP_LOGI(TAG, "[Splashscreen] Splashscreen removed");
-
-    
-    #else
-
-    
-        Serial.println("[Splashscreen] Splashscreen removed");
-
-    
-    #endif
+    ESP_LOGI(TAG, "[Splashscreen] Splashscreen removed");
 }
 
 bool splashscreen_is_active() {
