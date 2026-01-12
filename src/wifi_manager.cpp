@@ -65,6 +65,9 @@ static void on_improv_connected(const char* ssid, const char* password) {
         save_credentials(String(ssid), String(password));
         improv_provisioning_active = false;
         Serial.println("[Improv WiFi BLE] Provisioning successful!");
+        Serial.println("[Improv WiFi BLE] Credentials saved, restarting device...");
+        delay(1000);  // Give time for serial output to flush
+        ESP.restart();  // Restart the device after successful provisioning
     } else {
         Serial.println("[Improv WiFi BLE] Failed to connect with provided credentials");
         // Restart BLE provisioning if connection failed
