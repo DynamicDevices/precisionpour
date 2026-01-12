@@ -48,6 +48,17 @@ static void on_improv_error(ImprovTypes::Error error) {
 static void on_improv_connected(const char* ssid, const char* password) {
     Serial.printf("[Improv WiFi BLE] Received credentials for: %s\r\n", ssid);
     
+    // Deinitialize BLE first before re-enabling WiFi
+    if (NimBLEDevice::getInitialized()) {
+        Serial.println("[Improv WiFi BLE] Deinitializing BLE before connecting to WiFi...");
+        NimBLEDevice::deinit(true);
+        delay(200);  // Give BLE time to fully shut down
+    }
+    
+    // Re-enable WiFi
+    WiFi.mode(WIFI_STA);
+    delay(100);
+    
     // Try to connect with new credentials
     if (connect_to_wifi(String(ssid), String(password))) {
         // Save credentials for future use
@@ -56,6 +67,10 @@ static void on_improv_connected(const char* ssid, const char* password) {
         Serial.println("[Improv WiFi BLE] Provisioning successful!");
     } else {
         Serial.println("[Improv WiFi BLE] Failed to connect with provided credentials");
+        // Restart BLE provisioning if connection failed
+        Serial.println("[Improv WiFi BLE] Restarting BLE provisioning...");
+        delay(1000);
+        wifi_manager_start_provisioning();
     }
 }
 #endif
@@ -196,7 +211,7 @@ void wifi_manager_start_provisioning() {
     
     Serial.println("[Improv WiFi BLE] Starting BLE provisioning...");
     
-    // Get unique chip ID (MAC address formatted as hex string)
+    // Get unique chip ID (MAC address formatted as hex string) BEFORE disabling WiFi
     char chip_id[32] = {0};
     uint8_t mac[6];
     esp_err_t ret = esp_efuse_mac_get_default(mac);
@@ -206,7 +221,7 @@ void wifi_manager_start_provisioning() {
         snprintf(chip_id, sizeof(chip_id), "%02X%02X%02X%02X%02X%02X",
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     } else {
-        // Fallback: use WiFi MAC address
+        // Fallback: use WiFi MAC address (get it before disabling WiFi)
         String wifi_mac = WiFi.macAddress();
         wifi_mac.replace(":", "");
         strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
@@ -219,8 +234,16 @@ void wifi_manager_start_provisioning() {
     Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
     Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
     
+    // Disable WiFi before initializing BLE to avoid coexistence conflicts
+    // WiFi and BLE share the same radio on ESP32, so we need to disable WiFi first
+    Serial.println("[Improv WiFi BLE] Disabling WiFi for BLE...");
+    WiFi.disconnect(true);  // Disconnect and disable WiFi
+    WiFi.mode(WIFI_OFF);     // Turn off WiFi completely
+    delay(100);               // Give WiFi time to fully shut down
+    
     // Initialize BLE with device name including chip ID
     if (!NimBLEDevice::getInitialized()) {
+        Serial.println("[Improv WiFi BLE] Initializing BLE...");
         NimBLEDevice::init(ble_device_name);
         Serial.println("[Improv WiFi BLE] BLE initialized");
     }
@@ -295,11 +318,16 @@ void wifi_manager_loop() {
             improv_provisioning_active = false;
             provisioning_start = 0;
             
-            // Deinitialize BLE to save power
+            // Deinitialize BLE first
             if (NimBLEDevice::getInitialized()) {
+                Serial.println("[Improv WiFi BLE] Deinitializing BLE...");
                 NimBLEDevice::deinit(true);
-                Serial.println("[Improv WiFi BLE] BLE deinitialized");
+                delay(200);  // Give BLE time to fully shut down
             }
+            
+            // Re-enable WiFi before attempting connection
+            WiFi.mode(WIFI_STA);
+            delay(100);
             
             // Try to reconnect with saved/hardcoded credentials
             String ssid, password;
@@ -310,16 +338,21 @@ void wifi_manager_loop() {
             }
         }
         
-        // If WiFi connected, stop provisioning
+        // If WiFi connected, stop provisioning and re-enable WiFi
         if (wifi_manager_is_connected() && improv_provisioning_active) {
             improv_provisioning_active = false;
             provisioning_start = 0;
             
-            // Deinitialize BLE to save power
+            // Deinitialize BLE first
             if (NimBLEDevice::getInitialized()) {
+                Serial.println("[Improv WiFi BLE] Deinitializing BLE...");
                 NimBLEDevice::deinit(true);
-                Serial.println("[Improv WiFi BLE] Provisioning stopped - WiFi connected, BLE deinitialized");
+                delay(200);  // Give BLE time to fully shut down
             }
+            
+            // Re-enable WiFi (it should already be connected, but ensure it's enabled)
+            WiFi.mode(WIFI_STA);
+            Serial.println("[Improv WiFi BLE] Provisioning stopped - WiFi connected, BLE deinitialized");
         }
         
         return;  // Don't try to reconnect while provisioning
