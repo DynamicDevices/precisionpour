@@ -342,12 +342,11 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
     static uint16_t swapped_buffer[4096];  // Max chunk size
     const size_t max_buffer_pixels = sizeof(swapped_buffer) / sizeof(swapped_buffer[0]);
     
-    while (remaining_pixels > 0) {
-        size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
-        size_t chunk_bytes = chunk_pixels * 2;
-        
-        // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
-        size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
+        while (remaining_pixels > 0) {
+            size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
+            
+            // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
+            size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
         for (size_t i = 0; i < buffer_pixels; i++) {
             uint16_t pixel = pixels[offset + i];
             // Swap high and low bytes: 0x1234 -> 0x3412

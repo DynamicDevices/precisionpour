@@ -55,7 +55,15 @@
     #include "pouring_mode_ui.h"
 #endif
 
-// LVGL tick timer (not used in ESP-IDF, using esp_timer instead)
+// LVGL tick timer
+// hw_timer_t is defined in esp_idf_compat.h
+#ifdef ESP_PLATFORM
+    static hw_timer_t* lvgl_timer = NULL;
+    static portMUX_TYPE lvgl_timer_mux = portMUX_INITIALIZER_UNLOCKED;
+#else
+    hw_timer_t *lvgl_timer = NULL;
+    portMUX_TYPE lvgl_timer_mux = portMUX_INITIALIZER_UNLOCKED;
+#endif
 
 // Error recovery tracking
 static unsigned int consecutive_errors = 0;
@@ -72,11 +80,11 @@ static ScreenState current_screen = SCREEN_PRODUCTION;
 
 // LVGL tick handler (called by timer)
 #ifdef ESP_PLATFORM
-// ESP-IDF: Timer callback doesn't need IRAM_ATTR for esp_timer
+// ESP-IDF: Timer callback runs in task context (not ISR), so use portENTER_CRITICAL
 void lvgl_tick_handler(void* arg) {
-    portENTER_CRITICAL_ISR(&lvgl_timer_mux);
+    portENTER_CRITICAL(&lvgl_timer_mux);
     lv_tick_inc(1);  // 1ms tick
-    portEXIT_CRITICAL_ISR(&lvgl_timer_mux);
+    portEXIT_CRITICAL(&lvgl_timer_mux);
 }
 #else
 void IRAM_ATTR lvgl_tick_handler() {
