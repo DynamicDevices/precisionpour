@@ -23,6 +23,7 @@
 #include "mqtt_client.h"
 // Use the logo image (extracted from splashscreen)
 #include "images/precision_pour_logo.h"
+#include <math.h>  // For sin() function for pulsing animation
 
 // UI objects
 static lv_obj_t *logo_container = NULL;
@@ -33,6 +34,10 @@ static lv_obj_t *wifi_bar1 = NULL;  // WiFi signal bar 1 (shortest)
 static lv_obj_t *wifi_bar2 = NULL;  // WiFi signal bar 2
 static lv_obj_t *wifi_bar3 = NULL;  // WiFi signal bar 3
 static lv_obj_t *wifi_bar4 = NULL;  // WiFi signal bar 4 (tallest)
+static lv_obj_t *improv_icon_container = NULL;  // Improv/BLE provisioning icon container
+static lv_obj_t *improv_icon_circle = NULL;  // Pulsing circle for Improv mode
+static lv_obj_t *improv_icon_bt1 = NULL;  // Bluetooth icon part 1
+static lv_obj_t *improv_icon_bt2 = NULL;  // Bluetooth icon part 2
 static lv_obj_t *comm_status_container = NULL;  // Communication activity icon container
 static lv_obj_t *comm_spark1 = NULL;  // Spark/pulse element 1
 static lv_obj_t *comm_spark2 = NULL;  // Spark/pulse element 2
@@ -289,6 +294,51 @@ void production_mode_init() {
         
         Serial.println("[Production UI] WiFi status icon created");
     }
+    
+    // Create Improv/BLE provisioning icon (initially hidden)
+    Serial.println("[Production UI] Creating Improv provisioning icon...");
+    improv_icon_container = lv_obj_create(lv_scr_act());
+    if (improv_icon_container != NULL) {
+        // Container for Improv icon (24x20 pixels, same size as WiFi icon)
+        lv_obj_set_size(improv_icon_container, 24, 20);
+        lv_obj_align(improv_icon_container, LV_ALIGN_BOTTOM_LEFT, 5, -5);
+        lv_obj_set_style_bg_opa(improv_icon_container, LV_OPA_TRANSP, 0);  // Transparent background
+        lv_obj_set_style_border_width(improv_icon_container, 0, 0);
+        lv_obj_set_style_pad_all(improv_icon_container, 0, 0);
+        lv_obj_clear_flag(improv_icon_container, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // Create pulsing circle background (blue/cyan color)
+        improv_icon_circle = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_circle, 16, 16);
+        lv_obj_align(improv_icon_circle, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_bg_opa(improv_icon_circle, LV_OPA_60, 0);
+        lv_obj_set_style_bg_color(improv_icon_circle, lv_color_hex(0x0080FF), 0);  // Blue
+        lv_obj_set_style_border_width(improv_icon_circle, 0, 0);
+        lv_obj_set_style_radius(improv_icon_circle, LV_RADIUS_CIRCLE, 0);
+        
+        // Create Bluetooth icon - part 1 (left arc)
+        improv_icon_bt1 = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_bt1, 2, 8);
+        lv_obj_align(improv_icon_bt1, LV_ALIGN_CENTER, -4, -2);
+        lv_obj_set_style_bg_opa(improv_icon_bt1, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(improv_icon_bt1, lv_color_hex(0xFFFFFF), 0);  // White
+        lv_obj_set_style_border_width(improv_icon_bt1, 0, 0);
+        lv_obj_set_style_radius(improv_icon_bt1, 1, 0);
+        
+        // Create Bluetooth icon - part 2 (right arc)
+        improv_icon_bt2 = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_bt2, 2, 8);
+        lv_obj_align(improv_icon_bt2, LV_ALIGN_CENTER, 4, 2);
+        lv_obj_set_style_bg_opa(improv_icon_bt2, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(improv_icon_bt2, lv_color_hex(0xFFFFFF), 0);  // White
+        lv_obj_set_style_border_width(improv_icon_bt2, 0, 0);
+        lv_obj_set_style_radius(improv_icon_bt2, 1, 0);
+        
+        // Initially hide the Improv icon (show WiFi icon by default)
+        lv_obj_add_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
+        
+        Serial.println("[Production UI] Improv provisioning icon created");
+    }
     lv_timer_handler();
     
     // Create communication activity icon in bottom right corner (electric pulse/spark)
@@ -347,8 +397,36 @@ void production_mode_init() {
 }
 
 void production_mode_update() {
-    // Update WiFi status icon
-    if (wifi_status_container != NULL && 
+    // Check if Improv provisioning is active
+    bool is_provisioning = wifi_manager_is_provisioning();
+    
+    // Show/hide WiFi and Improv icons based on provisioning status
+    if (wifi_status_container != NULL) {
+        if (is_provisioning) {
+            // Hide WiFi icon, show Improv icon
+            lv_obj_add_flag(wifi_status_container, LV_OBJ_FLAG_HIDDEN);
+            if (improv_icon_container != NULL) {
+                lv_obj_clear_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
+                
+                // Animate the pulsing circle (simple opacity animation)
+                unsigned long now = millis();
+                uint8_t pulse_opacity = 40 + (sin(now / 200.0) + 1.0) * 30;  // Pulse between 40-100% opacity
+                if (improv_icon_circle != NULL) {
+                    lv_obj_set_style_opa(improv_icon_circle, pulse_opacity, 0);
+                    lv_obj_invalidate(improv_icon_circle);
+                }
+            }
+        } else {
+            // Show WiFi icon, hide Improv icon
+            lv_obj_clear_flag(wifi_status_container, LV_OBJ_FLAG_HIDDEN);
+            if (improv_icon_container != NULL) {
+                lv_obj_add_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
+            }
+        }
+    }
+    
+    // Update WiFi status icon (only if not provisioning)
+    if (!is_provisioning && wifi_status_container != NULL && 
         wifi_bar1 != NULL && wifi_bar2 != NULL && wifi_bar3 != NULL && wifi_bar4 != NULL) {
         unsigned long now = millis();
         
