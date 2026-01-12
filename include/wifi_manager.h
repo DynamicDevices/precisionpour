@@ -36,7 +36,10 @@ String wifi_manager_get_ip();
 String wifi_manager_get_mac_address();
 int wifi_manager_get_rssi();  // Get WiFi signal strength (RSSI in dBm)
 
-// Improv WiFi provisioning status
+// Internal function for connecting to WiFi (used by wifi_improv)
+bool wifi_manager_connect(const String& ssid, const String& password);
+
+// Improv WiFi provisioning status (delegated to wifi_improv component)
 bool wifi_manager_is_provisioning();  // Returns true if Improv WiFi provisioning is active
 void wifi_manager_start_provisioning();  // Manually start Improv WiFi provisioning
 
