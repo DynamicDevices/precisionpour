@@ -317,7 +317,7 @@ void wifi_manager_loop() {
         }
         
         if (millis() - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
-            Serial.println("[Improv WiFi BLE] Provisioning timeout (60s) - restarting device");
+            Serial.println("[Improv WiFi BLE] Provisioning timeout (5 minutes) - restarting device");
             improv_provisioning_active = false;
             provisioning_start = 0;
             
