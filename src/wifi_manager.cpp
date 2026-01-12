@@ -248,9 +248,9 @@ void wifi_manager_start_provisioning() {
         strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
     }
     
-    // Build BLE device name: precisionpour-XXX
+    // Build BLE device name: P-XXX (shortened for BLE name length limits)
     char ble_device_name[64] = {0};
-    snprintf(ble_device_name, sizeof(ble_device_name), "precisionpour-%s", chip_id);
+    snprintf(ble_device_name, sizeof(ble_device_name), "P-%s", chip_id);
     
     Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
     Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
