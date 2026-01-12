@@ -4,13 +4,13 @@ This document explains how to use Improv WiFi provisioning with the PrecisionPou
 
 ## Overview
 
-Improv WiFi allows you to configure WiFi credentials without hardcoding them in the firmware. The device can receive WiFi credentials via Serial (USB) connection or through the Improv WiFi mobile app.
+Improv WiFi allows you to configure WiFi credentials without hardcoding them in the firmware. The device uses **Bluetooth Low Energy (BLE)** to receive WiFi credentials through the Improv WiFi mobile app.
 
 ## How It Works
 
 1. **Initial Boot**: Device tries to connect using saved credentials (if available) or hardcoded credentials from `secrets.h`
-2. **Connection Failure**: If connection fails, Improv WiFi provisioning starts automatically
-3. **Provisioning**: Device accepts WiFi credentials via Serial or BLE (Serial protocol currently implemented)
+2. **Connection Failure**: If connection fails, Improv WiFi BLE provisioning starts automatically
+3. **Provisioning**: Device advertises via BLE and accepts WiFi credentials through the Improv WiFi mobile app
 4. **Save & Connect**: Credentials are saved to EEPROM and device connects to WiFi
 5. **Future Boots**: Device uses saved credentials automatically
 
@@ -31,24 +31,18 @@ In `include/config.h`:
 
 ## Usage Methods
 
-### Method 1: Improv WiFi Mobile App (Recommended)
+### Using Improv WiFi Mobile App
 
 1. **Download App**: Install "Improv WiFi" app on iOS or Android
-2. **Connect Device**: Connect ESP32 via USB to your computer/phone
-3. **Open App**: Launch Improv WiFi app
-4. **Select Device**: App should detect the device via Serial
-5. **Configure WiFi**: Enter WiFi SSID and password in the app
-6. **Connect**: Device receives credentials and connects automatically
-
-### Method 2: Serial Commands (Advanced)
-
-You can send Improv WiFi commands directly via Serial monitor:
-
-1. **Open Serial Monitor**: Use PlatformIO serial monitor at 115200 baud
-2. **Send Commands**: Follow Improv WiFi Serial protocol
-3. **Device Responds**: Device processes commands and connects
-
-**Note**: Serial protocol details are in the [Improv WiFi specification](https://www.improv-wifi.com/serial/).
+   - iOS: [App Store](https://apps.apple.com/app/improv-wifi/id1641444767)
+   - Android: [Google Play](https://play.google.com/store/apps/details?id=com.improvwifiapp)
+2. **Enable Bluetooth**: Ensure Bluetooth is enabled on your phone
+3. **Start Provisioning**: Device automatically starts BLE advertising when WiFi connection fails
+4. **Open App**: Launch Improv WiFi app
+5. **Scan for Device**: App will scan and detect "PrecisionPour" device
+6. **Select Device**: Tap on "PrecisionPour" in the device list
+7. **Configure WiFi**: Enter WiFi SSID and password in the app
+8. **Connect**: Device receives credentials via BLE and connects automatically
 
 ## Behavior
 
@@ -61,9 +55,10 @@ You can send Improv WiFi commands directly via Serial monitor:
 ### Provisioning Mode (WiFi Not Connected)
 
 - Device enters provisioning mode automatically after connection failure
-- Serial output shows: `[Improv WiFi] Starting Serial provisioning...`
+- Serial output shows: `[Improv WiFi BLE] Starting BLE provisioning...`
+- Device advertises via BLE as "PrecisionPour"
 - Device accepts credentials for 5 minutes (configurable timeout)
-- After timeout, device tries saved/hardcoded credentials again
+- After timeout, device stops BLE advertising and tries saved/hardcoded credentials again
 
 ### Credential Priority
 
@@ -84,20 +79,23 @@ To clear saved credentials and force re-provisioning:
 When provisioning is active, you'll see:
 
 ```
-[Improv WiFi] Starting Serial provisioning...
-[Improv WiFi] Serial provisioning active
-[Improv WiFi] Send WiFi credentials via Serial or use Improv WiFi app
+[Improv WiFi BLE] Starting BLE provisioning...
+[Improv WiFi BLE] BLE initialized
+[Improv WiFi BLE] BLE provisioning active
+[Improv WiFi BLE] Device advertising as 'PrecisionPour'
+[Improv WiFi BLE] Connect with Improv WiFi mobile app
 ```
 
 When credentials are received:
 
 ```
-[Improv WiFi] Received credentials for: YourWiFiNetwork
+[Improv WiFi BLE] Received credentials for: YourWiFiNetwork
 [WiFi] Connecting to: YourWiFiNetwork
 [WiFi] Connected!
 [WiFi] IP address: 192.168.1.100
 [WiFi] Saved credentials for: YourWiFiNetwork
-[Improv WiFi] Provisioning successful!
+[Improv WiFi BLE] Provisioning successful!
+[Improv WiFi BLE] Provisioning stopped - WiFi connected, BLE deinitialized
 ```
 
 ## Troubleshooting

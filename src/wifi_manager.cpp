@@ -17,7 +17,7 @@
 #include "config.h"
 #include <Arduino.h>
 #include <Preferences.h>
-#include <ImprovWiFiLibrary.h>
+#include <ImprovWiFiBLE.h>
 
 // EEPROM/Preferences keys for storing WiFi credentials
 #define PREF_NAMESPACE "wifi"
@@ -34,26 +34,26 @@ static Preferences preferences;
 static bool connect_to_wifi(const String& ssid, const String& password);
 static void save_credentials(const String& ssid, const String& password);
 
-// Improv WiFi instance (uses Serial protocol)
+// Improv WiFi BLE instance
 #if USE_IMPROV_WIFI
-static ImprovWiFi improvWiFi(&Serial);
+static ImprovWiFiBLE improvWiFiBLE;
 
-// Callback functions for Improv WiFi
+// Callback functions for Improv WiFi BLE
 static void on_improv_error(ImprovTypes::Error error) {
-    Serial.printf("[Improv WiFi] Error: %d\r\n", (int)error);
+    Serial.printf("[Improv WiFi BLE] Error: %d\r\n", (int)error);
 }
 
 static void on_improv_connected(const char* ssid, const char* password) {
-    Serial.printf("[Improv WiFi] Received credentials for: %s\r\n", ssid);
+    Serial.printf("[Improv WiFi BLE] Received credentials for: %s\r\n", ssid);
     
     // Try to connect with new credentials
     if (connect_to_wifi(String(ssid), String(password))) {
         // Save credentials for future use
         save_credentials(String(ssid), String(password));
         improv_provisioning_active = false;
-        Serial.println("[Improv WiFi] Provisioning successful!");
+        Serial.println("[Improv WiFi BLE] Provisioning successful!");
     } else {
-        Serial.println("[Improv WiFi] Failed to connect with provided credentials");
+        Serial.println("[Improv WiFi BLE] Failed to connect with provided credentials");
     }
 }
 #endif
@@ -192,13 +192,18 @@ void wifi_manager_start_provisioning() {
         return;  // Already provisioning
     }
     
-    Serial.println("[Improv WiFi] Starting Serial provisioning...");
-    Serial.println("[Improv WiFi] Connect via Serial (USB) or use Improv WiFi app");
+    Serial.println("[Improv WiFi BLE] Starting BLE provisioning...");
     
-    // Set device info for Improv WiFi
+    // Initialize BLE (if not already initialized)
+    if (!NimBLEDevice::getInitialized()) {
+        NimBLEDevice::init("PrecisionPour");
+        Serial.println("[Improv WiFi BLE] BLE initialized");
+    }
+    
+    // Set device info for Improv WiFi BLE (this also sets up BLE advertising)
     String device_id = WiFi.macAddress();
     device_id.replace(":", "");
-    improvWiFi.setDeviceInfo(
+    improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
         device_id.c_str(),
         "1.0.0",  // Firmware version
@@ -206,13 +211,14 @@ void wifi_manager_start_provisioning() {
     );
     
     // Set callbacks
-    improvWiFi.onImprovError(on_improv_error);
-    improvWiFi.onImprovConnected(on_improv_connected);
+    improvWiFiBLE.onImprovError(on_improv_error);
+    improvWiFiBLE.onImprovConnected(on_improv_connected);
     
     improv_provisioning_active = true;
     
-    Serial.println("[Improv WiFi] Serial provisioning active");
-    Serial.println("[Improv WiFi] Send WiFi credentials via Serial or use Improv WiFi app");
+    Serial.println("[Improv WiFi BLE] BLE provisioning active");
+    Serial.println("[Improv WiFi BLE] Device advertising as 'PrecisionPour'");
+    Serial.println("[Improv WiFi BLE] Connect with Improv WiFi mobile app");
     #else
     Serial.println("[Improv WiFi] Improv WiFi is disabled in config.h");
     #endif
@@ -250,10 +256,11 @@ bool wifi_manager_is_connected() {
 
 void wifi_manager_loop() {
     #if USE_IMPROV_WIFI
-    // Handle Improv WiFi provisioning if active
+    // Handle Improv WiFi BLE provisioning if active
+    // Note: BLE callbacks are handled automatically by NimBLE
+    // No need to call a loop() function like Serial version
+    
     if (improv_provisioning_active) {
-        improvWiFi.handleSerial();  // Process Serial commands
-        
         // Check for timeout
         static unsigned long provisioning_start = 0;
         if (provisioning_start == 0) {
@@ -261,9 +268,15 @@ void wifi_manager_loop() {
         }
         
         if (millis() - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
-            Serial.println("[Improv WiFi] Provisioning timeout");
+            Serial.println("[Improv WiFi BLE] Provisioning timeout - stopping BLE");
             improv_provisioning_active = false;
             provisioning_start = 0;
+            
+            // Deinitialize BLE to save power
+            if (NimBLEDevice::getInitialized()) {
+                NimBLEDevice::deinit(true);
+                Serial.println("[Improv WiFi BLE] BLE deinitialized");
+            }
             
             // Try to reconnect with saved/hardcoded credentials
             String ssid, password;
@@ -278,7 +291,12 @@ void wifi_manager_loop() {
         if (wifi_manager_is_connected() && improv_provisioning_active) {
             improv_provisioning_active = false;
             provisioning_start = 0;
-            Serial.println("[Improv WiFi] Provisioning stopped - WiFi connected");
+            
+            // Deinitialize BLE to save power
+            if (NimBLEDevice::getInitialized()) {
+                NimBLEDevice::deinit(true);
+                Serial.println("[Improv WiFi BLE] Provisioning stopped - WiFi connected, BLE deinitialized");
+            }
         }
         
         return;  // Don't try to reconnect while provisioning
