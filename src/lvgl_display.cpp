@@ -16,19 +16,18 @@
 #include "lvgl_display.h"
 
 // System/Standard library headers
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework headers
-    #include <driver/gpio.h>
-    #include <driver/spi_master.h>
-    #include <esp_log.h>
-    #include <string.h>
-    #define TAG "display"
-    
-    // Project compatibility headers
-    #include "esp_idf_compat.h"
-    
-    // ESP-IDF SPI handle
-    static spi_device_handle_t spi_handle = NULL;
+// ESP-IDF framework headers
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
+#include <esp_log.h>
+#include <string.h>
+#define TAG "display"
+
+// Project compatibility headers
+#include "esp_idf_compat.h"
+
+// ESP-IDF SPI handle
+static spi_device_handle_t spi_handle = NULL;
     
     // ILI9341 command constants
     #define ILI9341_SWRESET     0x01
@@ -285,58 +284,28 @@
         
         ESP_LOGI(TAG, "ILI9341 initialized");
     }
-    
-#else
-    // Arduino framework: Use TFT_eSPI
-    #include "User_Setup.h"
-    #include <TFT_eSPI.h>
-    
-    // Forward declare TFT_eSPI
-    extern TFT_eSPI tft;
-#endif
 
 // Display buffer
 static lv_color_t buf1[LVGL_BUFFER_SIZE];
 static lv_color_t buf2[LVGL_BUFFER_SIZE];
 
 void lvgl_display_init() {
-    #ifdef ESP_PLATFORM
-        // ESP-IDF: Initialize ILI9341
-        ili9341_init();
-        
-        // Initialize LVGL display driver
-        lv_disp_draw_buf_t *draw_buf = (lv_disp_draw_buf_t *)malloc(sizeof(lv_disp_draw_buf_t));
-        lv_disp_draw_buf_init(draw_buf, buf1, buf2, LVGL_BUFFER_SIZE);
-        
-        static lv_disp_drv_t disp_drv;
-        lv_disp_drv_init(&disp_drv);
-        disp_drv.hor_res = DISPLAY_WIDTH;
-        disp_drv.ver_res = DISPLAY_HEIGHT;
-        disp_drv.flush_cb = lvgl_display_flush;
-        disp_drv.draw_buf = draw_buf;
-        lv_disp_drv_register(&disp_drv);
-        
-        ESP_LOGI(TAG, "LVGL display initialized");
-    #else
-        // Arduino: Initialize TFT display
-        tft.init();
-        tft.setRotation(DISPLAY_ROTATION);
-        tft.fillScreen(TFT_BLACK);
-        
-        // Initialize LVGL display driver
-        lv_disp_draw_buf_t *draw_buf = (lv_disp_draw_buf_t *)malloc(sizeof(lv_disp_draw_buf_t));
-        lv_disp_draw_buf_init(draw_buf, buf1, buf2, LVGL_BUFFER_SIZE);
-        
-        static lv_disp_drv_t disp_drv;
-        lv_disp_drv_init(&disp_drv);
-        disp_drv.hor_res = DISPLAY_WIDTH;
-        disp_drv.ver_res = DISPLAY_HEIGHT;
-        disp_drv.flush_cb = lvgl_display_flush;
-        disp_drv.draw_buf = draw_buf;
-        lv_disp_drv_register(&disp_drv);
-        
-        Serial.println("LVGL display initialized");
-    #endif
+    // ESP-IDF: Initialize ILI9341
+    ili9341_init();
+    
+    // Initialize LVGL display driver
+    lv_disp_draw_buf_t *draw_buf = (lv_disp_draw_buf_t *)malloc(sizeof(lv_disp_draw_buf_t));
+    lv_disp_draw_buf_init(draw_buf, buf1, buf2, LVGL_BUFFER_SIZE);
+    
+    static lv_disp_drv_t disp_drv;
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.hor_res = DISPLAY_WIDTH;
+    disp_drv.ver_res = DISPLAY_HEIGHT;
+    disp_drv.flush_cb = lvgl_display_flush;
+    disp_drv.draw_buf = draw_buf;
+    lv_disp_drv_register(&disp_drv);
+    
+    ESP_LOGI(TAG, "LVGL display initialized");
 }
 
 void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
@@ -344,69 +313,61 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
     uint32_t h = (area->y2 - area->y1 + 1);
     uint32_t pixel_count = w * h;
     
-    #ifdef ESP_PLATFORM
-        // ESP-IDF: Use SPI to send pixel data
-        static bool first_flush = true;
-        if (first_flush) {
-            ESP_LOGI(TAG, "First flush: area (%d,%d) to (%d,%d), %dx%d pixels", 
-                     area->x1, area->y1, area->x2, area->y2, w, h);
-            first_flush = false;
+    // ESP-IDF: Use SPI to send pixel data
+    static bool first_flush = true;
+    if (first_flush) {
+        ESP_LOGI(TAG, "First flush: area (%d,%d) to (%d,%d), %dx%d pixels", 
+                 area->x1, area->y1, area->x2, area->y2, w, h);
+        first_flush = false;
+    }
+    
+    ili9341_set_window(area->x1, area->y1, area->x2, area->y2);
+    
+    // Send pixel data in chunks (SPI has max transfer size limits)
+    // Max chunk size: 4092 bytes (ESP-IDF default, but we'll use 4096 for safety)
+    const size_t max_chunk_bytes = 4096;
+    const size_t max_chunk_pixels = max_chunk_bytes / 2;  // 2 bytes per pixel
+    
+    gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
+    
+    // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
+    // TFT_eSPI pushColors is called with swap=true, which swaps bytes of each pixel
+    // We need to match this behavior: swap high and low bytes of each 16-bit pixel
+    // Example: 0xF800 (little-endian) -> 0x00F8 (byte-swapped)
+    uint16_t *pixels = (uint16_t *)color_p;
+    size_t remaining_pixels = pixel_count;
+    size_t offset = 0;
+    
+    // Allocate buffer for byte-swapped pixels
+    static uint16_t swapped_buffer[4096];  // Max chunk size
+    const size_t max_buffer_pixels = sizeof(swapped_buffer) / sizeof(swapped_buffer[0]);
+    
+    while (remaining_pixels > 0) {
+        size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
+        size_t chunk_bytes = chunk_pixels * 2;
+        
+        // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
+        size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
+        for (size_t i = 0; i < buffer_pixels; i++) {
+            uint16_t pixel = pixels[offset + i];
+            // Swap high and low bytes: 0x1234 -> 0x3412
+            swapped_buffer[i] = ((pixel & 0xFF) << 8) | ((pixel >> 8) & 0xFF);
         }
         
-        ili9341_set_window(area->x1, area->y1, area->x2, area->y2);
+        spi_transaction_t t = {};
+        t.length = buffer_pixels * 2 * 8;  // Length in bits
+        t.tx_buffer = swapped_buffer;
+        t.flags = 0;  // No special flags
         
-        // Send pixel data in chunks (SPI has max transfer size limits)
-        // Max chunk size: 4092 bytes (ESP-IDF default, but we'll use 4096 for safety)
-        const size_t max_chunk_bytes = 4096;
-        const size_t max_chunk_pixels = max_chunk_bytes / 2;  // 2 bytes per pixel
-        
-        gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
-        
-        // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
-        // TFT_eSPI pushColors is called with swap=true, which swaps bytes of each pixel
-        // We need to match this behavior: swap high and low bytes of each 16-bit pixel
-        // Example: 0xF800 (little-endian) -> 0x00F8 (byte-swapped)
-        uint16_t *pixels = (uint16_t *)color_p;
-        size_t remaining_pixels = pixel_count;
-        size_t offset = 0;
-        
-        // Allocate buffer for byte-swapped pixels
-        static uint16_t swapped_buffer[4096];  // Max chunk size
-        const size_t max_buffer_pixels = sizeof(swapped_buffer) / sizeof(swapped_buffer[0]);
-        
-        while (remaining_pixels > 0) {
-            size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
-            size_t chunk_bytes = chunk_pixels * 2;
-            
-            // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
-            size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
-            for (size_t i = 0; i < buffer_pixels; i++) {
-                uint16_t pixel = pixels[offset + i];
-                // Swap high and low bytes: 0x1234 -> 0x3412
-                swapped_buffer[i] = ((pixel & 0xFF) << 8) | ((pixel >> 8) & 0xFF);
-            }
-            
-            spi_transaction_t t = {};
-            t.length = buffer_pixels * 2 * 8;  // Length in bits
-            t.tx_buffer = swapped_buffer;
-            t.flags = 0;  // No special flags
-            
-            esp_err_t ret = spi_device_transmit(spi_handle, &t);
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "SPI transmit error: %s", esp_err_to_name(ret));
-                break;
-            }
-            
-            offset += buffer_pixels;
-            remaining_pixels -= buffer_pixels;
+        esp_err_t ret = spi_device_transmit(spi_handle, &t);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "SPI transmit error: %s", esp_err_to_name(ret));
+            break;
         }
-    #else
-        // Arduino: Use TFT_eSPI
-        tft.startWrite();
-        tft.setAddrWindow(area->x1, area->y1, w, h);
-        tft.pushColors((uint16_t *)color_p, w * h, true);
-        tft.endWrite();
-    #endif
+        
+        offset += buffer_pixels;
+        remaining_pixels -= buffer_pixels;
+    }
     
     lv_disp_flush_ready(disp_drv);
 }

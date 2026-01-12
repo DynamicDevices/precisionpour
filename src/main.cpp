@@ -19,26 +19,20 @@
 #include "config.h"
 
 // System/Standard library headers
-#ifdef ESP_PLATFORM
-    // ESP-IDF framework headers
-    #include <driver/gpio.h>
-    #include <driver/spi_master.h>
-    #include <esp_log.h>
-    #include <esp_mac.h>
-    #include <esp_system.h>
-    #include <esp_timer.h>
-    #include <freertos/FreeRTOS.h>
-    #include <freertos/task.h>
-    #include <nvs_flash.h>
-    #if ENABLE_WATCHDOG
-    #include <esp_task_wdt.h>
-    #endif
-    #define TAG_MAIN "main"
-#else
-    // Arduino framework headers
-    #include <Arduino.h>
-    #include <SPI.h>
+// ESP-IDF framework headers
+#include <driver/gpio.h>
+#include <driver/spi_master.h>
+#include <esp_log.h>
+#include <esp_mac.h>
+#include <esp_system.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <nvs_flash.h>
+#if ENABLE_WATCHDOG
+#include <esp_task_wdt.h>
 #endif
+#define TAG_MAIN "main"
 
 // Third-party library headers
 #include <ArduinoJson.h>
@@ -61,14 +55,7 @@
     #include "pouring_mode_ui.h"
 #endif
 
-// LVGL tick timer
-#ifdef ESP_PLATFORM
-    hw_timer_t *lvgl_timer = NULL;
-    portMUX_TYPE lvgl_timer_mux = portMUX_INITIALIZER_UNLOCKED;
-#else
-    hw_timer_t *lvgl_timer = NULL;
-    portMUX_TYPE lvgl_timer_mux = portMUX_INITIALIZER_UNLOCKED;
-#endif
+// LVGL tick timer (not used in ESP-IDF, using esp_timer instead)
 
 // Error recovery tracking
 static unsigned int consecutive_errors = 0;
