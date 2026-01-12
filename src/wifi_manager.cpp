@@ -20,6 +20,8 @@
 #include <ImprovWiFiBLE.h>
 #include "esp_efuse.h"
 #include "esp_system.h"
+#include <NimBLEDevice.h>
+#include <NimBLEAdvertising.h>
 
 // EEPROM/Preferences keys for storing WiFi credentials
 #define PREF_NAMESPACE "wifi"
@@ -274,12 +276,53 @@ void wifi_manager_start_provisioning() {
     
     // Set device info for Improv WiFi BLE (this also sets up BLE advertising)
     // Use short strings to avoid exceeding BLE advertising data length (31 bytes max)
+    
+    // Log string lengths for debugging advertising data size
+    const char* firmware_name = "PP";
+    const char* firmware_version = "1.0";
+    Serial.printf("[Improv WiFi BLE] Advertising data sizes:\r\n");
+    Serial.printf("  Firmware name: '%s' (%d bytes)\r\n", firmware_name, strlen(firmware_name));
+    Serial.printf("  Firmware version: '%s' (%d bytes)\r\n", firmware_version, strlen(firmware_version));
+    Serial.printf("  Device name: '%s' (%d bytes)\r\n", ble_device_name, strlen(ble_device_name));
+    Serial.printf("  Total string data: %d bytes\r\n", 
+                  strlen(firmware_name) + strlen(firmware_version) + strlen(ble_device_name));
+    Serial.printf("  BLE advertising limit: 31 bytes (includes service UUIDs, flags, etc.)\r\n");
+    
     improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
-        "PP",     // Firmware name (shortened to avoid advertising length issues)
-        "1.0",    // Firmware version (shortened from 1.0.0)
-        ble_device_name  // Device name (PXXX - last 3 chars of chip ID)
+        firmware_name,
+        firmware_version,
+        ble_device_name
     );
+    
+    // Try to get actual advertising data size (if available through NimBLE)
+    // Note: The Improv WiFi library sets up advertising internally, so we may not be able to access it directly
+    // But we can at least see the string lengths we're providing
+    NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
+    if (advertising != NULL) {
+        // Calculate estimated advertising data size
+        // BLE advertising packet structure:
+        // - Flags (3 bytes: 1 byte length + 1 byte type + 1 byte flags)
+        // - Service UUIDs (varies, typically 2-20 bytes)
+        // - Service data (varies, includes our strings)
+        // - Device name (varies, 1 byte length + 1 byte type + name length)
+        // Total must be <= 31 bytes
+        
+        // Estimate: Service UUID (16-bit = 3 bytes), Service data (1+1+data), Name (1+1+name)
+        // Improv WiFi typically uses: 3 (flags) + 3 (UUID) + 3+service_data + 3+name = ~12-15 base + data
+        int estimated_base = 12;  // Flags + UUID + overhead
+        int estimated_service_data = strlen(firmware_name) + strlen(firmware_version) + strlen(ble_device_name) + 10; // +10 for structure overhead
+        int estimated_total = estimated_base + estimated_service_data;
+        
+        Serial.printf("[Improv WiFi BLE] Estimated advertising data size: ~%d bytes\r\n", estimated_total);
+        if (estimated_total > 31) {
+            Serial.printf("[Improv WiFi BLE] WARNING: Estimated size exceeds 31-byte limit by %d bytes!\r\n", 
+                         estimated_total - 31);
+        } else {
+            Serial.printf("[Improv WiFi BLE] Estimated size within limit (%d bytes remaining)\r\n", 
+                         31 - estimated_total);
+        }
+    }
     
     // Set callbacks
     improvWiFiBLE.onImprovError(on_improv_error);
