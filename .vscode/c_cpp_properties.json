@@ -10,6 +10,7 @@
             "includePath": [
                 "/data_drive/dd/precisionpour/include",
                 "/data_drive/dd/precisionpour/src",
+                "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Improv WiFi Library/src",
                 "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/ArduinoJson/src",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/PubSubClient/src",
@@ -255,6 +256,7 @@
                 "path": [
                     "/data_drive/dd/precisionpour/include",
                     "/data_drive/dd/precisionpour/src",
+                    "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/Improv WiFi Library/src",
                     "/home/ajlennon/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/ArduinoJson/src",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev/PubSubClient/src",

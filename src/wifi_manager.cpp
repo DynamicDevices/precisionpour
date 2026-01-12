@@ -10,27 +10,119 @@
  * WiFi Manager Implementation
  * 
  * Handles WiFi connection and automatic reconnection
+ * Supports Improv WiFi BLE provisioning for credential setup
  */
 
 #include "wifi_manager.h"
 #include "config.h"
 #include <Arduino.h>
+#include <Preferences.h>
+#include <ImprovWiFiLibrary.h>
+
+// EEPROM/Preferences keys for storing WiFi credentials
+#define PREF_NAMESPACE "wifi"
+#define PREF_KEY_SSID "ssid"
+#define PREF_KEY_PASSWORD "password"
+#define PREF_KEY_USE_SAVED "use_saved"
 
 static bool wifi_connected = false;
 static unsigned long last_reconnect_attempt = 0;
+static bool improv_provisioning_active = false;
+static Preferences preferences;
 
-bool wifi_manager_init() {
-    Serial.println("\n=== Initializing WiFi ===");
+// Forward declarations
+static bool connect_to_wifi(const String& ssid, const String& password);
+static void save_credentials(const String& ssid, const String& password);
+
+// Improv WiFi instance (uses Serial protocol)
+#if USE_IMPROV_WIFI
+static ImprovWiFi improvWiFi(&Serial);
+
+// Callback functions for Improv WiFi
+static void on_improv_error(ImprovTypes::Error error) {
+    Serial.printf("[Improv WiFi] Error: %d\r\n", (int)error);
+}
+
+static void on_improv_connected(const char* ssid, const char* password) {
+    Serial.printf("[Improv WiFi] Received credentials for: %s\r\n", ssid);
     
-    // Set WiFi mode to station (client)
+    // Try to connect with new credentials
+    if (connect_to_wifi(String(ssid), String(password))) {
+        // Save credentials for future use
+        save_credentials(String(ssid), String(password));
+        improv_provisioning_active = false;
+        Serial.println("[Improv WiFi] Provisioning successful!");
+    } else {
+        Serial.println("[Improv WiFi] Failed to connect with provided credentials");
+    }
+}
+#endif
+
+// Forward declarations (already declared above for Improv callbacks)
+static bool load_saved_credentials(String& ssid, String& password);
+static void clear_saved_credentials();
+
+/**
+ * Load saved WiFi credentials from EEPROM/Preferences
+ */
+static bool load_saved_credentials(String& ssid, String& password) {
+    if (!USE_SAVED_CREDENTIALS) {
+        return false;
+    }
+    
+    preferences.begin(PREF_NAMESPACE, true);  // Read-only mode
+    bool use_saved = preferences.getBool(PREF_KEY_USE_SAVED, false);
+    
+    if (use_saved) {
+        ssid = preferences.getString(PREF_KEY_SSID, "");
+        password = preferences.getString(PREF_KEY_PASSWORD, "");
+        preferences.end();
+        
+        if (ssid.length() > 0) {
+            Serial.printf("[WiFi] Loaded saved credentials for: %s\r\n", ssid.c_str());
+            return true;
+        }
+    }
+    
+    preferences.end();
+    return false;
+}
+
+/**
+ * Save WiFi credentials to EEPROM/Preferences
+ */
+static void save_credentials(const String& ssid, const String& password) {
+    preferences.begin(PREF_NAMESPACE, false);  // Read-write mode
+    preferences.putString(PREF_KEY_SSID, ssid);
+    preferences.putString(PREF_KEY_PASSWORD, password);
+    preferences.putBool(PREF_KEY_USE_SAVED, true);
+    preferences.end();
+    
+    Serial.printf("[WiFi] Saved credentials for: %s\r\n", ssid.c_str());
+}
+
+/**
+ * Clear saved WiFi credentials
+ */
+static void clear_saved_credentials() {
+    preferences.begin(PREF_NAMESPACE, false);
+    preferences.remove(PREF_KEY_SSID);
+    preferences.remove(PREF_KEY_PASSWORD);
+    preferences.putBool(PREF_KEY_USE_SAVED, false);
+    preferences.end();
+    
+    Serial.println("[WiFi] Cleared saved credentials");
+}
+
+/**
+ * Connect to WiFi network
+ */
+static bool connect_to_wifi(const String& ssid, const String& password) {
+    Serial.printf("[WiFi] Connecting to: %s\r\n", ssid.c_str());
+    
     WiFi.mode(WIFI_STA);
-    
-    // Disable WiFi power saving for better connection stability
     WiFi.setSleep(false);
-    
-    // Start WiFi connection
-    Serial.printf("Connecting to WiFi: %s\r\n", WIFI_SSID);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(ssid.c_str(), password.c_str());
     
     // Wait for connection (with timeout)
     unsigned long start_time = millis();
@@ -44,18 +136,90 @@ bool wifi_manager_init() {
     
     if (WiFi.status() == WL_CONNECTED) {
         wifi_connected = true;
-        Serial.println("WiFi connected!");
-        Serial.printf("IP address: %s\r\n", WiFi.localIP().toString().c_str());
-        Serial.printf("MAC address: %s\r\n", WiFi.macAddress().c_str());
-        Serial.printf("Signal strength (RSSI): %d dBm\r\n", WiFi.RSSI());
+        Serial.println("[WiFi] Connected!");
+        Serial.printf("[WiFi] IP address: %s\r\n", WiFi.localIP().toString().c_str());
+        Serial.printf("[WiFi] MAC address: %s\r\n", WiFi.macAddress().c_str());
+        Serial.printf("[WiFi] Signal strength (RSSI): %d dBm\r\n", WiFi.RSSI());
         return true;
     } else {
         wifi_connected = false;
-        Serial.println("WiFi connection failed!");
-        Serial.println("Will attempt to reconnect in main loop...");
-        last_reconnect_attempt = millis();
+        Serial.println("[WiFi] Connection failed!");
         return false;
     }
+}
+
+bool wifi_manager_init() {
+    Serial.println("\n=== Initializing WiFi ===");
+    
+    String ssid, password;
+    bool use_saved = false;
+    
+    // Try to load saved credentials first
+    if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
+        use_saved = true;
+        Serial.println("[WiFi] Using saved credentials");
+    } else {
+        // Use hardcoded credentials from secrets.h
+        ssid = String(WIFI_SSID);
+        password = String(WIFI_PASSWORD);
+        Serial.println("[WiFi] Using hardcoded credentials");
+    }
+    
+    // Try to connect with available credentials
+    if (connect_to_wifi(ssid, password)) {
+        return true;
+    }
+    
+    // Connection failed - start Improv WiFi provisioning if enabled
+    #if USE_IMPROV_WIFI
+    if (!wifi_connected) {
+        Serial.println("[WiFi] Connection failed - starting Improv WiFi provisioning...");
+        wifi_manager_start_provisioning();
+        return false;  // Not connected yet, provisioning in progress
+    }
+    #else
+    Serial.println("[WiFi] Connection failed - Improv WiFi disabled, will retry...");
+    last_reconnect_attempt = millis();
+    return false;
+    #endif
+    
+    return false;
+}
+
+void wifi_manager_start_provisioning() {
+    #if USE_IMPROV_WIFI
+    if (improv_provisioning_active) {
+        return;  // Already provisioning
+    }
+    
+    Serial.println("[Improv WiFi] Starting Serial provisioning...");
+    Serial.println("[Improv WiFi] Connect via Serial (USB) or use Improv WiFi app");
+    
+    // Set device info for Improv WiFi
+    String device_id = WiFi.macAddress();
+    device_id.replace(":", "");
+    improvWiFi.setDeviceInfo(
+        ImprovTypes::ChipFamily::CF_ESP32,
+        device_id.c_str(),
+        "1.0.0",  // Firmware version
+        "PrecisionPour"  // Device name
+    );
+    
+    // Set callbacks
+    improvWiFi.onImprovError(on_improv_error);
+    improvWiFi.onImprovConnected(on_improv_connected);
+    
+    improv_provisioning_active = true;
+    
+    Serial.println("[Improv WiFi] Serial provisioning active");
+    Serial.println("[Improv WiFi] Send WiFi credentials via Serial or use Improv WiFi app");
+    #else
+    Serial.println("[Improv WiFi] Improv WiFi is disabled in config.h");
+    #endif
+}
+
+bool wifi_manager_is_provisioning() {
+    return improv_provisioning_active;
 }
 
 bool wifi_manager_is_connected() {
@@ -64,32 +228,85 @@ bool wifi_manager_is_connected() {
         if (!wifi_connected) {
             // Just reconnected
             wifi_connected = true;
-            Serial.println("WiFi reconnected!");
-            Serial.printf("IP address: %s\r\n", WiFi.localIP().toString().c_str());
+            Serial.println("[WiFi] Reconnected!");
+            Serial.printf("[WiFi] IP address: %s\r\n", WiFi.localIP().toString().c_str());
+            
+            // Stop provisioning if it was active
+            if (improv_provisioning_active) {
+                improv_provisioning_active = false;
+                Serial.println("[Improv WiFi] Provisioning stopped - WiFi connected");
+            }
         }
         return true;
     } else {
         if (wifi_connected) {
             // Just disconnected
             wifi_connected = false;
-            Serial.println("WiFi disconnected!");
+            Serial.println("[WiFi] Disconnected!");
         }
         return false;
     }
 }
 
 void wifi_manager_loop() {
+    #if USE_IMPROV_WIFI
+    // Handle Improv WiFi provisioning if active
+    if (improv_provisioning_active) {
+        improvWiFi.handleSerial();  // Process Serial commands
+        
+        // Check for timeout
+        static unsigned long provisioning_start = 0;
+        if (provisioning_start == 0) {
+            provisioning_start = millis();
+        }
+        
+        if (millis() - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
+            Serial.println("[Improv WiFi] Provisioning timeout");
+            improv_provisioning_active = false;
+            provisioning_start = 0;
+            
+            // Try to reconnect with saved/hardcoded credentials
+            String ssid, password;
+            if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
+                connect_to_wifi(ssid, password);
+            } else {
+                connect_to_wifi(String(WIFI_SSID), String(WIFI_PASSWORD));
+            }
+        }
+        
+        // If WiFi connected, stop provisioning
+        if (wifi_manager_is_connected() && improv_provisioning_active) {
+            improv_provisioning_active = false;
+            provisioning_start = 0;
+            Serial.println("[Improv WiFi] Provisioning stopped - WiFi connected");
+        }
+        
+        return;  // Don't try to reconnect while provisioning
+    }
+    #endif
+    
     // Check connection status
     if (!wifi_manager_is_connected()) {
         // Try to reconnect if enough time has passed
         unsigned long now = millis();
         if (now - last_reconnect_attempt >= WIFI_RECONNECT_DELAY) {
             last_reconnect_attempt = now;
-            Serial.println("Attempting WiFi reconnection...");
+            Serial.println("[WiFi] Attempting reconnection...");
+            
+            String ssid, password;
+            bool use_saved = false;
+            
+            // Try saved credentials first
+            if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
+                use_saved = true;
+            } else {
+                ssid = String(WIFI_SSID);
+                password = String(WIFI_PASSWORD);
+            }
             
             WiFi.disconnect();
             delay(100);
-            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+            WiFi.begin(ssid.c_str(), password.c_str());
             
             // Wait a bit for connection
             int attempts = 0;
@@ -100,10 +317,19 @@ void wifi_manager_loop() {
             
             if (WiFi.status() == WL_CONNECTED) {
                 wifi_connected = true;
-                Serial.println("WiFi reconnected!");
-                Serial.printf("IP address: %s\r\n", WiFi.localIP().toString().c_str());
+                Serial.println("[WiFi] Reconnected!");
+                Serial.printf("[WiFi] IP address: %s\r\n", WiFi.localIP().toString().c_str());
             } else {
-                Serial.println("WiFi reconnection failed, will try again...");
+                Serial.println("[WiFi] Reconnection failed, will try again...");
+                
+                // If reconnection fails and Improv WiFi is enabled, start provisioning
+                #if USE_IMPROV_WIFI
+                if (!improv_provisioning_active && (now - last_reconnect_attempt) > 60000) {
+                    // Only start provisioning after 1 minute of failed reconnections
+                    Serial.println("[WiFi] Starting Improv WiFi provisioning after failed reconnection...");
+                    wifi_manager_start_provisioning();
+                }
+                #endif
             }
         }
     }

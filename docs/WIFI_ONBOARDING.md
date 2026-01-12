@@ -153,19 +153,20 @@ For **production deployment**, we recommend:
 4. Store credentials in EEPROM/SPIFFS
 5. Test with captive portal
 
-### Phase 2: Improv WiFi (Future Enhancement)
-1. Research Improv WiFi Arduino implementation
-2. Add BLE support to firmware
-3. Implement Improv WiFi protocol
-4. Test with Improv WiFi mobile app
-5. Fallback to WiFiManager if BLE unavailable
+### Phase 2: Improv WiFi BLE (Future Enhancement)
+1. Enable `IMPROV_WIFI_BLE_ENABLED` in library
+2. Switch from `ImprovWiFi` (Serial) to `ImprovWiFiBLE` (BLE)
+3. Test with Improv WiFi mobile app over BLE
+4. Fallback to Serial protocol if BLE unavailable
 
 ## Current Status
 
 - ✅ Hardcoded credentials working
-- ⏳ WiFiManager not yet implemented
-- ⏳ Improv WiFi not yet implemented
-- ⏳ No credential storage (EEPROM/SPIFFS)
+- ✅ Improv WiFi Serial protocol implemented
+- ✅ Credential storage in Preferences (EEPROM)
+- ✅ Automatic fallback to saved credentials
+- ⏳ WiFiManager not yet implemented (alternative option)
+- ⏳ Improv WiFi BLE not yet implemented (requires additional setup)
 
 ## Next Steps
 
