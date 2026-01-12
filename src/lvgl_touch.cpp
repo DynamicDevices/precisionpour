@@ -240,23 +240,17 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         int irq_state = digitalRead(TOUCH_IRQ);
         irq_pressed = (irq_state == LOW);
         
-        // Log IRQ state changes (only meaningful transitions)
+        // Update IRQ state (don't log state changes - too noisy, especially during BLE activity)
         if (irq_state != last_irq_state) {
-            // Only log if it's a transition to LOW (pressed) or from LOW to HIGH (released)
-            // This filters out noise and rapid state changes
-            if (irq_state == LOW || last_irq_state == LOW) {
-                Serial.printf("[Touch] IRQ pin changed: %d -> %d (LOW=pressed)\r\n", last_irq_state, irq_state);
-            }
             last_irq_state = irq_state;
         }
         
-        // Clear interrupt flag (only log if we actually detect a press via pressure too)
+        // Clear interrupt flag - only process if pressure also indicates a press
+        // This filters out electrical noise from BLE radio activity
         if (irq_triggered) {
             irq_triggered = false;
-            // Only log if pressure also indicates a press (reduces false positives)
-            if (pressure_pressed) {
-                // Don't log here - will be logged in the pressed section below
-            }
+            // Don't log IRQ triggers - they're too noisy, especially during BLE provisioning
+            // Only process if we also have pressure reading indicating actual touch
         }
     }
     
