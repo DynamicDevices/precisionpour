@@ -1,0 +1,351 @@
+#
+# PrecisionPour ESP32 Firmware Configuration
+#
+# This file defines all configurable options for the PrecisionPour firmware
+# using ESP-IDF's KConfig system. Access via: idf.py menuconfig
+#
+
+menu "PrecisionPour Configuration"
+
+    menu "Hardware Configuration"
+        menu "Display Pins (SPI)"
+            config TFT_MOSI
+                int "TFT MOSI Pin"
+                range 0 39
+                default 13
+                help
+                    LCD SPI bus write data signal (GPIO13 for 2.8" ESP32-32E Display)
+
+            config TFT_MISO
+                int "TFT MISO Pin"
+                range 0 39
+                default 12
+                help
+                    LCD SPI bus read data signal (GPIO12 for 2.8" ESP32-32E Display)
+
+            config TFT_SCLK
+                int "TFT SCLK Pin"
+                range 0 39
+                default 14
+                help
+                    LCD SPI bus clock signal (GPIO14 for 2.8" ESP32-32E Display)
+
+            config TFT_CS
+                int "TFT CS Pin"
+                range 0 39
+                default 15
+                help
+                    LCD screen selection control signal (GPIO15 for 2.8" ESP32-32E Display)
+
+            config TFT_DC
+                int "TFT DC Pin"
+                range 0 39
+                default 2
+                help
+                    LCD command/data selection (GPIO2 for 2.8" ESP32-32E Display)
+
+            config TFT_RST
+                int "TFT RST Pin"
+                range 0 39
+                default 4
+                help
+                    LCD reset control signal (GPIO4 for 2.8" ESP32-32E Display)
+
+            config TFT_BL
+                int "TFT Backlight Pin"
+                range 0 39
+                default 21
+                help
+                    LCD backlight control (GPIO21 for 2.8" ESP32-32E Display)
+        endmenu
+
+        menu "Touch Screen Pins (Separate SPI Bus)"
+            config TOUCH_SCLK
+                int "Touch SCLK Pin"
+                range 0 39
+                default 25
+                help
+                    Touch SPI bus clock signal (GPIO25 for XPT2046)
+
+            config TOUCH_MOSI
+                int "Touch MOSI Pin"
+                range 0 39
+                default 32
+                help
+                    Touch SPI bus write data signal (GPIO32 for XPT2046)
+
+            config TOUCH_MISO
+                int "Touch MISO Pin"
+                range 0 39
+                default 39
+                help
+                    Touch SPI bus read data signal (GPIO39 for XPT2046, input only)
+
+            config TOUCH_CS
+                int "Touch CS Pin"
+                range 0 39
+                default 33
+                help
+                    Touch chip selection control signal (GPIO33 for XPT2046)
+
+            config TOUCH_IRQ
+                int "Touch IRQ Pin"
+                range 0 39
+                default 36
+                help
+                    Touch interrupt signal (GPIO36 for XPT2046)
+        endmenu
+
+        config FLOW_METER_PIN
+            int "Flow Meter Pin"
+            range 0 39
+            default 26
+            help
+                GPIO pin for flow meter interrupt (YF-S201 Hall Effect Flow Sensor)
+                Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK
+
+        menu "RGB LED Pins"
+            config LED_R_PIN
+                int "Red LED Pin"
+                range 0 39
+                default 22
+                help
+                    Red LED control (GPIO22, common anode: LOW=on)
+
+            config LED_G_PIN
+                int "Green LED Pin"
+                range 0 39
+                default 16
+                help
+                    Green LED control (GPIO16, common anode: LOW=on)
+
+            config LED_B_PIN
+                int "Blue LED Pin"
+                range 0 39
+                default 17
+                help
+                    Blue LED control (GPIO17, common anode: LOW=on)
+        endmenu
+
+        menu "RFID/NFC Pins (Optional)"
+            config RFID_CS_PIN
+                int "RFID CS Pin"
+                range 0 39
+                default 26
+                help
+                    GPIO pin for RFID/NFC chip select (GPIO26 available)
+
+            config RFID_RST_PIN
+                int "RFID RST Pin"
+                range 0 39
+                default 32
+                help
+                    GPIO pin for RFID/NFC reset (GPIO32 available)
+        endmenu
+    endmenu
+
+    menu "Display Settings"
+        config DISPLAY_WIDTH
+            int "Display Width (pixels)"
+            range 1 2048
+            default 320
+            help
+                Display width in pixels (320 for 2.8" ESP32-32E Display)
+
+        config DISPLAY_HEIGHT
+            int "Display Height (pixels)"
+            range 1 2048
+            default 240
+            help
+                Display height in pixels (240 for 2.8" ESP32-32E Display)
+
+        config DISPLAY_ROTATION
+            int "Display Rotation"
+            range 0 3
+            default 1
+            help
+                0=portrait, 1=landscape (USB right), 2=portrait, 3=landscape (USB left)
+
+        config TOUCH_THRESHOLD
+            int "Touch Threshold"
+            range 1 1000
+            default 100
+            help
+                Touch sensitivity threshold (lower = more sensitive)
+    endmenu
+
+    menu "Serial Configuration"
+        config SERIAL_BAUD
+            int "Serial Baud Rate"
+            range 9600 921600
+            default 115200
+            help
+                Serial communication baud rate
+    endmenu
+
+    menu "Operating Mode"
+        choice OPERATING_MODE
+            prompt "Operating Mode"
+            default PRODUCTION_MODE
+            help
+                Select the operating mode for the device
+
+            config PRODUCTION_MODE
+                bool "Production Mode"
+                help
+                    PrecisionPour branded UI with QR code and payment features
+
+            config TEST_MODE
+                bool "Test Mode"
+                help
+                    Hardware testing interface for development and debugging
+        endchoice
+
+        config TEST_MODE_ENABLED
+            int
+            default 1 if TEST_MODE
+            default 0
+    endmenu
+
+    menu "WiFi Configuration"
+        config WIFI_RECONNECT_DELAY
+            int "WiFi Reconnect Delay (ms)"
+            range 1000 60000
+            default 5000
+            help
+                Delay between WiFi reconnection attempts in milliseconds
+
+        choice WIFI_PROVISIONING
+            prompt "WiFi Provisioning Method"
+            default WIFI_SECRETS_H
+            help
+                Select how WiFi credentials are configured
+
+            config WIFI_SECRETS_H
+                bool "Use secrets.h file"
+                help
+                    WiFi credentials from include/secrets.h file
+
+            config WIFI_IMPROV_BLE
+                bool "Use Improv WiFi BLE Provisioning"
+                help
+                    Use BLE-based Improv WiFi provisioning for wireless setup
+        endchoice
+
+        config USE_IMPROV_WIFI
+            int
+            default 1 if WIFI_IMPROV_BLE
+            default 0
+
+        config IMPROV_WIFI_TIMEOUT_MS
+            int "Improv WiFi Timeout (ms)"
+            range 60000 1800000
+            default 300000
+            depends on WIFI_IMPROV_BLE
+            help
+                Timeout for Improv WiFi provisioning (5 minutes default)
+
+        config USE_SAVED_CREDENTIALS
+            bool "Use Saved Credentials from EEPROM"
+            default y
+            help
+                Use saved WiFi credentials from EEPROM if available
+    endmenu
+
+    menu "MQTT Configuration"
+        config MQTT_PORT
+            int "MQTT Port"
+            range 1 65535
+            default 1883
+            help
+                MQTT server port (1883 for non-TLS, 8883 for TLS)
+
+        config MQTT_CLIENT_ID_PREFIX
+            string "MQTT Client ID Prefix"
+            default "precisionpour"
+            help
+                Prefix for MQTT client ID (device MAC address will be appended)
+
+        config MQTT_TOPIC_PREFIX
+            string "MQTT Topic Prefix"
+            default "precisionpour"
+            help
+                Prefix for MQTT topics
+
+        config MQTT_RECONNECT_DELAY
+            int "MQTT Reconnect Delay (ms)"
+            range 1000 60000
+            default 5000
+            help
+                Delay between MQTT reconnection attempts in milliseconds
+
+        config MQTT_KEEPALIVE
+            int "MQTT Keepalive (seconds)"
+            range 10 300
+            default 60
+            help
+                MQTT keepalive interval in seconds
+    endmenu
+
+    menu "Error Recovery Configuration"
+        config ENABLE_WATCHDOG
+            bool "Enable Watchdog Timer"
+            default y
+            help
+                Enable ESP32 watchdog timer for system recovery
+
+        config WATCHDOG_TIMEOUT_SEC
+            int "Watchdog Timeout (seconds)"
+            range 10 300
+            default 60
+            depends on ENABLE_WATCHDOG
+            help
+                Watchdog timeout in seconds (system resets if not fed)
+
+        config MAX_CONSECUTIVE_ERRORS
+            int "Maximum Consecutive Errors"
+            range 1 100
+            default 10
+            help
+                Maximum consecutive errors before system reset
+
+        config ERROR_RESET_DELAY_MS
+            int "Error Reset Delay (ms)"
+            range 1000 30000
+            default 5000
+            help
+                Delay before reset after max errors in milliseconds
+    endmenu
+
+    menu "Pouring Mode Configuration"
+        config COST_PER_UNIT_DEFAULT
+            string "Default Cost Per Liter"
+            default "5.00"
+            help
+                Default cost per liter in currency units (e.g., "5.00" = £5.00 or $5.00)
+
+        config CURRENCY_SYMBOL
+            string "Currency Symbol"
+            default "GBP "
+            help
+                Currency symbol to display (e.g., "GBP ", "$", "EUR ")
+                Note: £ symbol (U+00A3) is not in the Montserrat font, so use "GBP " text prefix
+    endmenu
+
+    menu "Development Options"
+        config WOKWI_SIMULATOR
+            bool "Enable Wokwi Simulator Mode"
+            default n
+            help
+                Enable Wokwi simulator workaround mode
+                Wokwi's XPT2046 simulation doesn't respond to SPI, so we use IRQ pin simulation
+
+        config DEBUG_LEVEL
+            int "Debug Level"
+            range 0 5
+            default 3
+            help
+                Debug output level (0=none, 5=verbose)
+    endmenu
+
+endmenu

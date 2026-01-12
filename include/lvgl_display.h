@@ -22,9 +22,11 @@
 // Using 1/10 of screen size for double buffering
 #define LVGL_BUFFER_SIZE (DISPLAY_WIDTH * DISPLAY_HEIGHT / 10)
 
-// Display object (forward declaration)
+// Display object (forward declaration) - only for Arduino
+#ifndef CONFIG_TFT_MOSI
 class TFT_eSPI;
 extern TFT_eSPI tft;
+#endif
 
 /**
  * Initialize LVGL display driver

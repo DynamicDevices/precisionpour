@@ -16,7 +16,11 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include <Arduino.h>
+#ifdef ESP_PLATFORM
+    #include <stdint.h>
+#else
+    #include <Arduino.h>
+#endif
 
 class Display {
 public:

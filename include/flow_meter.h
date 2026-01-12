@@ -21,7 +21,32 @@
 #ifndef FLOW_METER_H
 #define FLOW_METER_H
 
-#include <Arduino.h>
+// Include config.h first to get framework detection
+#include "config.h"
+
+// Use ESP_PLATFORM as primary detection (ESP-IDF always defines this)
+#ifdef ESP_PLATFORM
+    // ESP-IDF framework
+    #ifndef CONFIG_TFT_MOSI
+        // If CONFIG_TFT_MOSI not defined yet, include sdkconfig.h
+        #ifdef __has_include
+            #if __has_include("sdkconfig.h")
+                #include "sdkconfig.h"
+            #endif
+        #endif
+    #endif
+    #ifdef CONFIG_TFT_MOSI
+        #include "esp_idf_compat.h"
+    #else
+        // ESP-IDF but KConfig not loaded - use compat layer anyway
+        #include "esp_idf_compat.h"
+    #endif
+    #include <stdint.h>
+#else
+    // Arduino framework
+    #include <Arduino.h>
+    #include <stdint.h>
+#endif
 
 // Flow meter initialization
 void flow_meter_init();

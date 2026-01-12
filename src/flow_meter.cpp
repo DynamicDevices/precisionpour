@@ -12,6 +12,18 @@
  * YF-S201 Hall Effect Flow Sensor reading and calculations
  */
 
+// Use ESP_PLATFORM for framework detection (ESP-IDF always defines this)
+#ifdef ESP_PLATFORM
+    // ESP-IDF framework - include compat layer first
+    #include "esp_idf_compat.h"
+    #include "driver/gpio.h"
+    #include "esp_log.h"
+    #define TAG "flow_meter"
+#else
+    // Arduino framework
+    #include <Arduino.h>
+#endif
+
 #include "flow_meter.h"
 #include "config.h"
 
@@ -32,19 +44,26 @@ static unsigned long last_pulse_time = 0;       // Time of last pulse (for debou
 void IRAM_ATTR flow_meter_isr() {
     unsigned long current_time = millis();
     
-    // Debounce: ignore pulses that come too quickly (< 10ms apart)
-    // This prevents false readings from electrical noise
-    if (current_time - last_pulse_time > 10) {
-        pulse_count++;
-        last_pulse_time = current_time;
-    }
+           // Debounce: ignore pulses that come too quickly (< 10ms apart)
+           // This prevents false readings from electrical noise
+           if (current_time - last_pulse_time > 10) {
+               // Use atomic increment to avoid volatile increment warning
+               unsigned long temp = pulse_count;
+               temp++;
+               pulse_count = temp;
+               last_pulse_time = current_time;
+           }
 }
 
 void flow_meter_init() {
-    Serial.println("\n=== Initializing Flow Meter ===");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "\n=== Initializing Flow Meter ===");
+    #else
+        Serial.println("\n=== Initializing Flow Meter ===");
+    #endif
     
     // Configure flow meter pin as input with pull-up
-    pinMode(FLOW_METER_PIN, INPUT_PULLUP);
+    pinMode(FLOW_METER_PIN, INPUT | INPUT_PULLUP_FLAG);
     
     // Attach interrupt to count pulses
     // RISING edge: pulse goes from LOW to HIGH
@@ -57,8 +76,13 @@ void flow_meter_init() {
     current_flow_rate_lpm = 0.0;
     total_volume_liters = 0.0;
     
-    Serial.printf("Flow meter initialized on pin %d\r\n", FLOW_METER_PIN);
-    Serial.println("Flow meter ready - waiting for flow...");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "Flow meter initialized on pin %d", FLOW_METER_PIN);
+        ESP_LOGI(TAG, "Flow meter ready - waiting for flow...");
+    #else
+        Serial.printf("Flow meter initialized on pin %d\r\n", FLOW_METER_PIN);
+        Serial.println("Flow meter ready - waiting for flow...");
+    #endif
 }
 
 void flow_meter_update() {
@@ -90,8 +114,13 @@ void flow_meter_update() {
         
         // Debug output (can be removed or made conditional)
         if (current_flow_rate_lpm > 0.1) {  // Only print if there's significant flow
-            Serial.printf("[Flow Meter] Flow: %.2f L/min, Total: %.3f L, Pulses: %lu\r\n",
+            #ifdef ESP_PLATFORM
+                ESP_LOGI(TAG, "Flow: %.2f L/min, Total: %.3f L, Pulses: %lu",
                          current_flow_rate_lpm, total_volume_liters, current_pulse_count);
+            #else
+                Serial.printf("[Flow Meter] Flow: %.2f L/min, Total: %.3f L, Pulses: %lu\r\n",
+                             current_flow_rate_lpm, total_volume_liters, current_pulse_count);
+            #endif
         }
     }
     
@@ -115,7 +144,11 @@ void flow_meter_reset_volume() {
     interrupts();
     last_pulse_count = 0;
     total_volume_liters = 0.0;
-    Serial.println("[Flow Meter] Volume counter reset");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "Volume counter reset");
+    #else
+        Serial.println("[Flow Meter] Volume counter reset");
+    #endif
 }
 
 unsigned long flow_meter_get_pulse_count() {

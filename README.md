@@ -117,12 +117,12 @@ precisionpour/
 - Flow rate range: 1-30 L/min
 - Accuracy: ±10%
 - Pulses per liter: 450
-- Connected to GPIO 25 (interrupt-capable pin)
-- **Note**: GPIO25 is also used for TOUCH_SCLK - see pin conflicts in [hardware docs](docs/HARDWARE_SETUP.md)
+- Connected to GPIO 26 (interrupt-capable pin)
+- **Note**: Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK
 - Wiring:
   - Red wire → 5V
   - Black wire → GND
-  - Yellow wire → GPIO 25
+  - Yellow wire → GPIO 26
 
 ### Network Connectivity
 - WiFi connection with auto-reconnect
@@ -205,6 +205,31 @@ precisionpour/
 
 ## Configuration
 
+The project supports two configuration methods:
+
+### Option 1: ESP-IDF KConfig (Recommended for Production)
+Use the menu-based configuration system:
+
+```bash
+# Open configuration menu
+pio run -e esp32dev-idf -t menuconfig
+
+# Navigate to "PrecisionPour Configuration" menu
+# Configure all settings via menu interface
+# Save and exit
+```
+
+See [docs/KCONFIG_MIGRATION.md](docs/KCONFIG_MIGRATION.md) for detailed guide.
+
+### Option 2: Arduino Framework (Current Default)
+Edit `include/config.h` directly:
+
+```cpp
+#define TEST_MODE 0  // 0 = Production, 1 = Test
+#define TFT_MOSI 13  // Display pin
+// ... etc
+```
+
 ### WiFi and MQTT Setup
 1. Copy `include/secrets.h.example` to `include/secrets.h`
 2. Edit `include/secrets.h` and add your credentials:
@@ -219,10 +244,8 @@ precisionpour/
 - **Production Mode** (`TEST_MODE = 0`): PrecisionPour branded UI with QR code
 - **Test Mode** (`TEST_MODE = 1`): Hardware testing interface
 
-Set in `include/config.h`:
-```cpp
-#define TEST_MODE 0  // 0 = Production, 1 = Test
-```
+**ESP-IDF**: Set via `idf.py menuconfig` → PrecisionPour Configuration → Operating Mode  
+**Arduino**: Set in `include/config.h`: `#define TEST_MODE 0`
 
 ## API Usage
 
@@ -296,3 +319,5 @@ Triggers pouring mode with payment parameters:
 - **[MQTT Protocol](docs/MQTT_PROTOCOL.md)** - MQTT command protocol and JSON format
 - **[Touchscreen Debugging](docs/TOUCHSCREEN_DEBUGGING.md)** - Touchscreen troubleshooting guide
 - **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Code organization and file structure
+- **[KConfig Migration](docs/KCONFIG_MIGRATION.md)** - ESP-IDF KConfig system guide
+- **[KConfig Usage](docs/KCONFIG_USAGE.md)** - Quick reference for KConfig usage

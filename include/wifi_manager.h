@@ -16,7 +16,17 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 
-#include <WiFi.h>
+#ifdef ESP_PLATFORM
+    // ESP-IDF framework
+    #include "esp_idf_compat.h"  // Include this first to get String typedef
+    #include <string>
+    #include <cstring>
+#else
+    // Arduino framework
+    #include <WiFi.h>
+    #include <WString.h>
+    typedef String String;  // Keep Arduino String type
+#endif
 
 // WiFi connection status
 bool wifi_manager_init();

@@ -14,7 +14,13 @@
  */
 
 #include "ui.h"
-#include <Arduino.h>
+#ifdef ESP_PLATFORM
+    #include "esp_idf_compat.h"
+    #include "esp_log.h"
+    #define TAG "ui"
+#else
+    #include <Arduino.h>
+#endif
 
 // UI objects
 static lv_obj_t *label_title;

@@ -21,9 +21,9 @@ This document describes the flow meter integration in the PrecisionPour firmware
 |------------|------------|-----------|
 | Red        | Power      | 5V        |
 | Black      | Ground     | GND       |
-| Yellow     | Signal     | GPIO 25   |
+| Yellow     | Signal     | GPIO 26   |
 
-**Important**: GPIO 25 must be interrupt-capable (it is on ESP32).
+**Important**: Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK. GPIO26 is interrupt-capable (it is on ESP32).
 
 ## How It Works
 
@@ -53,7 +53,7 @@ flow_meter_init();
 ```
 
 This function:
-- Configures GPIO 25 as input with pull-up
+- Configures GPIO 26 as input with pull-up
 - Attaches interrupt handler for RISING edge
 - Initializes internal counters
 

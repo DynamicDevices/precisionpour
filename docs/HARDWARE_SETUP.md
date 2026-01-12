@@ -42,9 +42,9 @@ The LCD uses a dedicated SPI bus:
 
 | Pin Function | GPIO | Description |
 |-------------|------|-------------|
-| **FLOW_METER_PIN** | GPIO25 | Flow meter interrupt signal (Hall effect sensor output) |
+| **FLOW_METER_PIN** | GPIO26 | Flow meter interrupt signal (Hall effect sensor output) |
 
-**Note**: GPIO25 is also used for TOUCH_SCLK. If you need both, you'll need to use a different pin for one of them or implement time-multiplexing.
+**Note**: Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK. GPIO26 is interrupt-capable and was previously used for Audio DAC (can be repurposed).
 
 ### Available Peripherals
 
@@ -108,11 +108,11 @@ The LCD uses a dedicated SPI bus:
 ### Current Pin Usage
 - **GPIO4**: TFT_RST (conflicts with AUDIO_EN)
 - **GPIO18, GPIO19, GPIO23**: LCD SPI (shared with MicroSD/SPI peripheral)
-- **GPIO25**: TOUCH_SCLK (conflicts with FLOW_METER_PIN if both needed)
+- **GPIO25**: TOUCH_SCLK (touch SPI clock)
+- **GPIO26**: FLOW_METER_PIN (flow meter interrupt, was Audio DAC)
 - **GPIO34, GPIO35, GPIO36, GPIO39**: Input-only pins (ADC or touch)
 
 ### Available for Future Use
-- **GPIO26**: Audio DAC (can be repurposed if audio not needed)
 - **GPIO27**: SPI peripheral CS (can be GPIO if not used)
 - **GPIO32**: Touch MOSI (currently used, but could be repurposed if touch not needed)
 
@@ -121,11 +121,9 @@ The LCD uses a dedicated SPI bus:
 ### Wiring
 - **Red wire** → 5V (ESP32 5V pin)
 - **Black wire** → GND (ESP32 GND)
-- **Yellow wire** → GPIO 25 (signal output, interrupt-capable pin)
+- **Yellow wire** → GPIO 26 (signal output, interrupt-capable pin)
 
-**Note**: GPIO25 is currently used for TOUCH_SCLK. If you need both flow meter and touch, consider:
-- Using a different pin for flow meter (check available pins above)
-- Or implementing time-multiplexing
+**Note**: Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK. GPIO26 is interrupt-capable and available for use.
 
 ### Specifications
 - Flow rate range: 1-30 liters per minute
@@ -214,8 +212,8 @@ TFT_eSPI library configuration:
 
 ### Flow Meter Issues
 - **Flow meter shows no reading**:
-  - Check wiring (Red→5V, Black→GND, Yellow→GPIO25)
-  - Verify GPIO25 is interrupt-capable
+  - Check wiring (Red→5V, Black→GND, Yellow→GPIO26)
+  - Verify GPIO26 is interrupt-capable
   - Ensure liquid is actually flowing
   - Check serial output for pulse count
 
@@ -225,12 +223,11 @@ TFT_eSPI library configuration:
   - Check calibration factor (7.5 pulses per L/min)
 
 ### Pin Conflict Issues
-- **GPIO25 conflict**: Currently used for both TOUCH_SCLK and FLOW_METER_PIN
-  - Solution: Use different pin for flow meter or implement time-multiplexing
 - **GPIO4 conflict**: Used for TFT_RST, conflicts with AUDIO_EN
   - Solution: Cannot use audio enable if display reset is needed
 - **SPI sharing**: LCD, MicroSD, and SPI peripheral share GPIO18, GPIO19, GPIO23
   - Solution: Cannot use all simultaneously without careful management
+- **GPIO26**: Now used for FLOW_METER_PIN (was Audio DAC, can be repurposed)
 
 ## References
 

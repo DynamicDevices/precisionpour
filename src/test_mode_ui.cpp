@@ -15,7 +15,13 @@
 #include "test_mode_ui.h"
 #include "config.h"
 #include "lvgl_touch.h"
-#include <Arduino.h>
+#ifdef ESP_PLATFORM
+    #include "esp_idf_compat.h"
+    #include "esp_log.h"
+    #define TAG "test_ui"
+#else
+    #include <Arduino.h>
+#endif
 
 // UI objects
 static lv_obj_t *tabview = NULL;

@@ -15,12 +15,21 @@
 #include "production_mode_ui.h"
 #include "config.h"
 #include <lvgl.h>
-#include <Arduino.h>
+#ifdef ESP_PLATFORM
+    #include "esp_idf_compat.h"
+    #include "esp_log.h"
+    #include "esp_mac.h"
+    #include "esp_chip_info.h"
+    #include "esp_system.h"
+    #define TAG "production_ui"
+#else
+    #include <Arduino.h>
+    #include "esp_efuse.h"
+    #include "esp_system.h"
+#endif
 #include <string.h>
-#include "esp_efuse.h"
-#include "esp_system.h"
 #include "wifi_manager.h"
-#include "mqtt_client.h"
+#include "mqtt_manager.h"
 // Use the logo image (extracted from splashscreen)
 #include "images/precision_pour_logo.h"
 #include <math.h>  // For sin() function for pulsing animation
@@ -69,31 +78,61 @@ static void get_chip_id_string(char *buffer, size_t buffer_size) {
     uint8_t mac[6];
     
     // Read the default MAC address (unique per ESP32 chip)
-    esp_err_t ret = esp_efuse_mac_get_default(mac);
+    #ifdef ESP_PLATFORM
+        esp_err_t ret = esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    #else
+        esp_err_t ret = esp_efuse_mac_get_default(mac);
+    #endif
     
     if (ret == ESP_OK) {
         // Format MAC address as hex string (e.g., "AABBCCDDEEFF")
         snprintf(buffer, buffer_size, "%02X%02X%02X%02X%02X%02X",
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         
-        Serial.printf("[Production UI] ESP32 MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\r\n",
+        #ifdef ESP_PLATFORM
+            ESP_LOGI(TAG, "[Production UI] ESP32 MAC Address: %02X:%02X:%02X:%02X:%02X:%02X",
                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        Serial.printf("[Production UI] Chip ID String: %s\r\n", buffer);
+            ESP_LOGI(TAG, "[Production UI] Chip ID String: %s", buffer);
+        #else
+            Serial.printf("[Production UI] ESP32 MAC Address: %02X:%02X:%02X:%02X:%02X:%02X\r\n",
+                         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+            Serial.printf("[Production UI] Chip ID String: %s\r\n", buffer);
+        #endif
     } else {
         // Fallback: use chip revision or other identifier
-        uint32_t chip_id = 0;
-        for (int i = 0; i < 17; i += 8) {
-            chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
-        }
-        snprintf(buffer, buffer_size, "%08X", chip_id);
-        Serial.printf("[Production UI] Using fallback chip ID: %s\r\n", buffer);
+        #ifdef ESP_PLATFORM
+            // ESP-IDF: Use esp_efuse_mac_get_default with retry or use chip info
+            uint32_t chip_id = 0;
+            esp_chip_info_t chip_info;
+            esp_chip_info(&chip_info);
+            chip_id = chip_info.revision;
+            snprintf(buffer, buffer_size, "%08lX", (unsigned long)chip_id);
+        #else
+            // Arduino: Use ESP.getEfuseMac()
+            uint32_t chip_id = 0;
+            for (int i = 0; i < 17; i += 8) {
+                chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+            }
+            snprintf(buffer, buffer_size, "%08lX", (unsigned long)chip_id);
+        #endif
+        #ifdef ESP_PLATFORM
+            ESP_LOGW(TAG, "[Production UI] Using fallback chip ID: %s", buffer);
+        #else
+            Serial.printf("[Production UI] Using fallback chip ID: %s\r\n", buffer);
+        #endif
     }
-    Serial.flush();
+    #ifndef ESP_PLATFORM
+        Serial.flush();
+    #endif
 }
 
 void production_mode_init() {
-    Serial.println("\n=== Initializing Production Mode UI ===");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "\n=== Initializing Production Mode UI ===");
+    #else
+        Serial.println("\n=== Initializing Production Mode UI ===");
+        Serial.flush();
+    #endif
     
     // Read ESP32 unique chip ID (MAC address)
     char chip_id[32] = {0};
@@ -102,13 +141,21 @@ void production_mode_init() {
     // Build QR code URL with device ID: https://precisionpour.co.uk?id=XXX
     snprintf(qr_code_url, sizeof(qr_code_url), "%s?id=%s", QR_CODE_BASE_URL, chip_id);
     
-    Serial.printf("[Production UI] QR Code URL: %s\r\n", qr_code_url);
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] QR Code URL: %s", qr_code_url);
+    #else
+        Serial.printf("[Production UI] QR Code URL: %s\r\n", qr_code_url);
+        Serial.flush();
+    #endif
     
     // Ensure LVGL is ready
     if (lv_scr_act() == NULL) {
-        Serial.println("[Production UI] ERROR: No active screen!");
-        Serial.flush();
+        #ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "[Production UI] ERROR: No active screen!");
+        #else
+            Serial.println("[Production UI] ERROR: No active screen!");
+            Serial.flush();
+        #endif
         return;
     }
     
@@ -128,12 +175,20 @@ void production_mode_init() {
     delay(5);
     
     // Create logo area at the top using the splashscreen logo image
-    Serial.println("[Production UI] Creating logo from image...");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating logo from image...");
+    #else
+        Serial.println("[Production UI] Creating logo from image...");
+        Serial.flush();
+    #endif
     logo_container = lv_obj_create(lv_scr_act());
     if (logo_container == NULL) {
-        Serial.println("[Production UI] ERROR: Failed to create logo container!");
-        Serial.flush();
+        #ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "[Production UI] ERROR: Failed to create logo container!");
+        #else
+            Serial.println("[Production UI] ERROR: Failed to create logo container!");
+            Serial.flush();
+        #endif
         return;
     }
     
@@ -152,15 +207,25 @@ void production_mode_init() {
     // Create logo image object
     lv_obj_t *logo_img = lv_img_create(logo_container);
     if (logo_img == NULL) {
-        Serial.println("[Production UI] ERROR: Failed to create logo image object!");
-        Serial.flush();
+        #ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "[Production UI] ERROR: Failed to create logo image object!");
+        #else
+            Serial.println("[Production UI] ERROR: Failed to create logo image object!");
+            Serial.flush();
+        #endif
         return;
     }
     
     // Set logo image source - use the logo image (properly sized)
-    Serial.printf("[Production UI] Setting logo image source, data pointer: %p\r\n", precision_pour_logo.data);
-    Serial.printf("[Production UI] Logo dimensions: %dx%d\r\n", 
-                  precision_pour_logo.header.w, precision_pour_logo.header.h);
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Setting logo image source, data pointer: %p", precision_pour_logo.data);
+        ESP_LOGI(TAG, "[Production UI] Logo dimensions: %dx%d",
+                 precision_pour_logo.header.w, precision_pour_logo.header.h);
+    #else
+        Serial.printf("[Production UI] Setting logo image source, data pointer: %p\r\n", precision_pour_logo.data);
+        Serial.printf("[Production UI] Logo dimensions: %dx%d\r\n",
+                      precision_pour_logo.header.w, precision_pour_logo.header.h);
+    #endif
     
     // Set image source
     lv_img_set_src(logo_img, &precision_pour_logo);
@@ -175,12 +240,22 @@ void production_mode_init() {
     delay(10);
     lv_timer_handler();
     
-    Serial.println("[Production UI] Logo created from image");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Logo created from image");
+    #else
+        Serial.println("[Production UI] Logo created from image");
+    #endif
+    #ifndef ESP_PLATFORM
+        Serial.flush();
+    #endif
     
     // Create QR code in the center
-    Serial.println("[Production UI] Creating QR code...");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating QR code...");
+    #else
+        Serial.println("[Production UI] Creating QR code...");
+        Serial.flush();
+    #endif
     #if LV_USE_QRCODE
         // Calculate QR code size (larger and better centered)
         lv_coord_t qr_size = 130;  // QR code size in pixels (increased for better visibility)
@@ -190,8 +265,12 @@ void production_mode_init() {
         qr_code = lv_qrcode_create(lv_scr_act(), qr_size, lv_color_black(), lv_color_white());
         
         if (qr_code == NULL) {
-            Serial.println("[Production UI] ERROR: Failed to create QR code!");
-            Serial.flush();
+            #ifdef ESP_PLATFORM
+                ESP_LOGE(TAG, "[Production UI] ERROR: Failed to create QR code!");
+            #else
+                Serial.println("[Production UI] ERROR: Failed to create QR code!");
+                Serial.flush();
+            #endif
         } else {
             // Set QR code data (generated once, not dynamic)
             // URL can include device ID - see get_chip_id_string() above
@@ -203,13 +282,22 @@ void production_mode_init() {
             lv_obj_align(qr_code, LV_ALIGN_TOP_MID, 0, 70);
             lv_timer_handler();
             
-            Serial.println("[Production UI] QR code created");
-            Serial.printf("[Production UI] QR code URL: %s (static, generated at init)\r\n", qr_code_url);
-            Serial.flush();
+            #ifdef ESP_PLATFORM
+                ESP_LOGI(TAG, "[Production UI] QR code created");
+                ESP_LOGI(TAG, "[Production UI] QR code URL: %s (static, generated at init)", qr_code_url);
+            #else
+                Serial.println("[Production UI] QR code created");
+                Serial.printf("[Production UI] QR code URL: %s (static, generated at init)\r\n", qr_code_url);
+                Serial.flush();
+            #endif
         }
     #else
-        Serial.println("[Production UI] ERROR: QR code support not enabled in lv_conf.h!");
-        Serial.flush();
+        #ifdef ESP_PLATFORM
+            ESP_LOGE(TAG, "[Production UI] ERROR: QR code support not enabled in lv_conf.h!");
+        #else
+            Serial.println("[Production UI] ERROR: QR code support not enabled in lv_conf.h!");
+            Serial.flush();
+        #endif
         // Create placeholder if QR code not available
         lv_obj_t *placeholder = lv_label_create(lv_scr_act());
         if (placeholder != NULL) {
@@ -221,8 +309,12 @@ void production_mode_init() {
     #endif
     
     // Create text label below QR code
-    Serial.println("[Production UI] Creating QR text label...");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating QR text label...");
+    #else
+        Serial.println("[Production UI] Creating QR text label...");
+        Serial.flush();
+    #endif
     label_qr_text = lv_label_create(lv_scr_act());
     if (label_qr_text != NULL) {
         lv_label_set_text(label_qr_text, "Scan here to pay and pour");
@@ -244,7 +336,11 @@ void production_mode_init() {
     }
     
     // Create WiFi status icon in bottom left corner (vertical signal bars)
-    Serial.println("[Production UI] Creating WiFi status icon...");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating WiFi status icon...");
+    #else
+        Serial.println("[Production UI] Creating WiFi status icon...");
+    #endif
     wifi_status_container = lv_obj_create(lv_scr_act());
     if (wifi_status_container != NULL) {
         // Container for WiFi icon (24x20 pixels to fit signal bars)
@@ -292,11 +388,19 @@ void production_mode_init() {
         lv_obj_set_style_radius(wifi_bar4, 1, 0);
         lv_obj_align(wifi_bar4, LV_ALIGN_BOTTOM_LEFT, 17, -1);
         
-        Serial.println("[Production UI] WiFi status icon created");
+        #ifdef ESP_PLATFORM
+            ESP_LOGI(TAG, "[Production UI] WiFi status icon created");
+        #else
+            Serial.println("[Production UI] WiFi status icon created");
+        #endif
     }
     
     // Create Improv/BLE provisioning icon (standard Bluetooth icon)
-    Serial.println("[Production UI] Creating Improv provisioning icon...");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating Improv provisioning icon...");
+    #else
+        Serial.println("[Production UI] Creating Improv provisioning icon...");
+    #endif
     improv_icon_container = lv_obj_create(lv_scr_act());
     if (improv_icon_container != NULL) {
         // Container for Improv icon (20x20 pixels for Bluetooth icon)
@@ -340,12 +444,20 @@ void production_mode_init() {
         // Initially hide the Improv icon (show WiFi icon by default)
         lv_obj_add_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
         
-        Serial.println("[Production UI] Improv provisioning icon created (Bluetooth icon)");
+        #ifdef ESP_PLATFORM
+            ESP_LOGI(TAG, "[Production UI] Improv provisioning icon created (Bluetooth icon)");
+        #else
+            Serial.println("[Production UI] Improv provisioning icon created (Bluetooth icon)");
+        #endif
     }
     lv_timer_handler();
     
     // Create communication activity icon in bottom right corner (electric pulse/spark)
-    Serial.println("[Production UI] Creating communication activity icon...");
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "[Production UI] Creating communication activity icon...");
+    #else
+        Serial.println("[Production UI] Creating communication activity icon...");
+    #endif
     comm_status_container = lv_obj_create(lv_scr_act());
     if (comm_status_container != NULL) {
         // Container for communication icon (20x20 pixels)
@@ -384,7 +496,11 @@ void production_mode_init() {
         lv_obj_set_style_radius(comm_spark3, 1, 0);
         lv_obj_align(comm_spark3, LV_ALIGN_RIGHT_MID, -4, 0);
         
-        Serial.println("[Production UI] Communication activity icon created");
+        #ifdef ESP_PLATFORM
+            ESP_LOGI(TAG, "[Production UI] Communication activity icon created");
+        #else
+            Serial.println("[Production UI] Communication activity icon created");
+        #endif
     }
     lv_timer_handler();
     
@@ -394,9 +510,14 @@ void production_mode_init() {
         delay(5);
     }
     
-    Serial.println("Production Mode UI initialized");
-    Serial.println("Note: QR code is generated once at initialization (not dynamically updated)");
-    Serial.flush();
+    #ifdef ESP_PLATFORM
+        ESP_LOGI(TAG, "Production Mode UI initialized");
+        ESP_LOGI(TAG, "Note: QR code is generated once at initialization (not dynamically updated)");
+    #else
+        Serial.println("Production Mode UI initialized");
+        Serial.println("Note: QR code is generated once at initialization (not dynamically updated)");
+        Serial.flush();
+    #endif
 }
 
 void production_mode_update() {
