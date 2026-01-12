@@ -18,6 +18,8 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <ImprovWiFiBLE.h>
+#include "esp_efuse.h"
+#include "esp_system.h"
 
 // EEPROM/Preferences keys for storing WiFi credentials
 #define PREF_NAMESPACE "wifi"
@@ -194,20 +196,41 @@ void wifi_manager_start_provisioning() {
     
     Serial.println("[Improv WiFi BLE] Starting BLE provisioning...");
     
-    // Initialize BLE (if not already initialized)
+    // Get unique chip ID (MAC address formatted as hex string)
+    char chip_id[32] = {0};
+    uint8_t mac[6];
+    esp_err_t ret = esp_efuse_mac_get_default(mac);
+    
+    if (ret == ESP_OK) {
+        // Format MAC address as hex string without colons (e.g., "AABBCCDDEEFF")
+        snprintf(chip_id, sizeof(chip_id), "%02X%02X%02X%02X%02X%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    } else {
+        // Fallback: use WiFi MAC address
+        String wifi_mac = WiFi.macAddress();
+        wifi_mac.replace(":", "");
+        strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
+    }
+    
+    // Build BLE device name: precisionpour-XXX
+    char ble_device_name[64] = {0};
+    snprintf(ble_device_name, sizeof(ble_device_name), "precisionpour-%s", chip_id);
+    
+    Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
+    Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
+    
+    // Initialize BLE with device name including chip ID
     if (!NimBLEDevice::getInitialized()) {
-        NimBLEDevice::init("PrecisionPour");
+        NimBLEDevice::init(ble_device_name);
         Serial.println("[Improv WiFi BLE] BLE initialized");
     }
     
     // Set device info for Improv WiFi BLE (this also sets up BLE advertising)
-    String device_id = WiFi.macAddress();
-    device_id.replace(":", "");
     improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
-        device_id.c_str(),
+        chip_id,  // Firmware name (using chip ID)
         "1.0.0",  // Firmware version
-        "PrecisionPour"  // Device name
+        ble_device_name  // Device name (precisionpour-XXX)
     );
     
     // Set callbacks
@@ -217,7 +240,7 @@ void wifi_manager_start_provisioning() {
     improv_provisioning_active = true;
     
     Serial.println("[Improv WiFi BLE] BLE provisioning active");
-    Serial.println("[Improv WiFi BLE] Device advertising as 'PrecisionPour'");
+    Serial.printf("[Improv WiFi BLE] Device advertising as '%s'\r\n", ble_device_name);
     Serial.println("[Improv WiFi BLE] Connect with Improv WiFi mobile app");
     #else
     Serial.println("[Improv WiFi] Improv WiFi is disabled in config.h");

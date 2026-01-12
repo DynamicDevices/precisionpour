@@ -39,8 +39,8 @@ In `include/config.h`:
 2. **Enable Bluetooth**: Ensure Bluetooth is enabled on your phone
 3. **Start Provisioning**: Device automatically starts BLE advertising when WiFi connection fails
 4. **Open App**: Launch Improv WiFi app
-5. **Scan for Device**: App will scan and detect "PrecisionPour" device
-6. **Select Device**: Tap on "PrecisionPour" in the device list
+5. **Scan for Device**: App will scan and detect devices named "precisionpour-XXX" (where XXX is the unique chip ID)
+6. **Select Device**: Tap on your device (e.g., "precisionpour-0070072D9200") in the device list
 7. **Configure WiFi**: Enter WiFi SSID and password in the app
 8. **Connect**: Device receives credentials via BLE and connects automatically
 
@@ -56,7 +56,7 @@ In `include/config.h`:
 
 - Device enters provisioning mode automatically after connection failure
 - Serial output shows: `[Improv WiFi BLE] Starting BLE provisioning...`
-- Device advertises via BLE as "PrecisionPour"
+- Device advertises via BLE as "precisionpour-XXX" (where XXX is the unique chip ID, e.g., "precisionpour-0070072D9200")
 - Device accepts credentials for 5 minutes (configurable timeout)
 - After timeout, device stops BLE advertising and tries saved/hardcoded credentials again
 
@@ -80,9 +80,11 @@ When provisioning is active, you'll see:
 
 ```
 [Improv WiFi BLE] Starting BLE provisioning...
+[Improv WiFi BLE] Chip ID: 0070072D9200
+[Improv WiFi BLE] BLE device name: precisionpour-0070072D9200
 [Improv WiFi BLE] BLE initialized
 [Improv WiFi BLE] BLE provisioning active
-[Improv WiFi BLE] Device advertising as 'PrecisionPour'
+[Improv WiFi BLE] Device advertising as 'precisionpour-0070072D9200'
 [Improv WiFi BLE] Connect with Improv WiFi mobile app
 ```
 
