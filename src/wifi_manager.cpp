@@ -274,7 +274,7 @@ void wifi_manager_start_provisioning() {
         ImprovTypes::ChipFamily::CF_ESP32,
         chip_id,  // Firmware name (using chip ID)
         "1.0.0",  // Firmware version
-        ble_device_name  // Device name (precisionpour-XXX)
+        ble_device_name  // Device name (P-XXX)
     );
     
     // Set callbacks
