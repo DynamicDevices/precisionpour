@@ -270,9 +270,10 @@ void wifi_manager_start_provisioning() {
     }
     
     // Set device info for Improv WiFi BLE (this also sets up BLE advertising)
+    // Use short strings to avoid exceeding BLE advertising data length (31 bytes max)
     improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
-        chip_id,  // Firmware name (using chip ID)
+        "PP",     // Firmware name (shortened to avoid advertising length issues)
         "1.0.0",  // Firmware version
         ble_device_name  // Device name (P-XXX)
     );
