@@ -288,6 +288,16 @@ void setup() {
     bool wifi_ok = wifi_manager_init();
     if (wifi_ok) {
         Serial.println("[Setup] WiFi initialized successfully");
+        
+        // Wait a bit for DNS to be ready after WiFi connection
+        Serial.println("[Setup] Waiting for network stack to be ready...");
+        delay(2000);  // 2 second delay for DNS/DHCP to stabilize
+        
+        // Verify WiFi is still connected
+        if (!wifi_manager_is_connected()) {
+            Serial.println("[Setup] WiFi disconnected after delay, will retry MQTT in loop");
+            wifi_ok = false;
+        }
     } else {
         Serial.println("[Setup] WiFi initialization failed, will retry in loop");
     }
@@ -304,8 +314,8 @@ void setup() {
         Serial.println("[Setup] Failed to get chip ID");
     }
     
-    // Initialize MQTT client (only if WiFi is connected)
-    if (wifi_ok && strlen(chip_id) > 0) {
+    // Initialize MQTT client (only if WiFi is connected and stable)
+    if (wifi_ok && wifi_manager_is_connected() && strlen(chip_id) > 0) {
         Serial.println("\n[Setup] Initializing MQTT...");
         #if !TEST_MODE
             // Set MQTT message callback for screen switching

@@ -14,7 +14,9 @@
 
 #include "mqtt_client.h"
 #include "config.h"
+#include "wifi_manager.h"
 #include <Arduino.h>
+#include <WiFi.h>
 
 static WiFiClient wifi_client;
 static PubSubClient mqtt_client(wifi_client);
@@ -52,7 +54,23 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 }
 
 bool mqtt_client_reconnect(const char* chip_id) {
+    // Verify WiFi is connected before attempting MQTT connection
+    if (!wifi_manager_is_connected()) {
+        Serial.println("[MQTT] WiFi not connected, skipping MQTT connection");
+        mqtt_connected = false;
+        return false;
+    }
+    
+    // Check if we have an IP address (DNS won't work without IP)
+    IPAddress local_ip = WiFi.localIP();
+    if (local_ip == IPAddress(0, 0, 0, 0)) {
+        Serial.println("[MQTT] No IP address assigned, waiting for DHCP...");
+        mqtt_connected = false;
+        return false;
+    }
+    
     Serial.println("[MQTT] Attempting to connect...");
+    Serial.printf("[MQTT] WiFi IP: %s\r\n", local_ip.toString().c_str());
     
     // Try to connect with client ID
     if (mqtt_client.connect(mqtt_client_id)) {
