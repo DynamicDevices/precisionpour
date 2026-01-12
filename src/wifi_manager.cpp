@@ -248,12 +248,12 @@ void wifi_manager_start_provisioning() {
         strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
     }
     
-    // Build BLE device name: P-XXXXXX (using last 6 chars of chip ID to fit BLE advertising limit)
+    // Build BLE device name: PXXX (using last 3 chars of chip ID to fit BLE advertising limit)
     char ble_device_name[64] = {0};
-    // Extract last 6 characters of chip_id (e.g., "2D9200" from "0070072D9200")
+    // Extract last 3 characters of chip_id (e.g., "200" from "0070072D9200")
     int chip_id_len = strlen(chip_id);
-    const char* chip_id_suffix = (chip_id_len >= 6) ? &chip_id[chip_id_len - 6] : chip_id;
-    snprintf(ble_device_name, sizeof(ble_device_name), "P-%s", chip_id_suffix);
+    const char* chip_id_suffix = (chip_id_len >= 3) ? &chip_id[chip_id_len - 3] : chip_id;
+    snprintf(ble_device_name, sizeof(ble_device_name), "P%s", chip_id_suffix);
     
     Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
     Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
