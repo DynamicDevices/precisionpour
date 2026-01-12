@@ -15,43 +15,43 @@
  * See LICENSE file for full license terms.
  */
 
+// Project headers (include config.h first for ENABLE_WATCHDOG definition)
+#include "config.h"
+
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework
-    #include "freertos/FreeRTOS.h"
-    #include "freertos/task.h"
-    #include "esp_log.h"
-    #include "esp_system.h"
-    #include "esp_timer.h"
-    #include "driver/gpio.h"
-    #include "nvs_flash.h"
-    #include "esp_mac.h"
-    #include "esp_idf_compat.h"
-    #include "esp_system_compat.h"
+    // ESP-IDF framework headers
+    #include <driver/gpio.h>
+    #include <driver/spi_master.h>
+    #include <esp_log.h>
+    #include <esp_mac.h>
+    #include <esp_system.h>
+    #include <esp_timer.h>
+    #include <freertos/FreeRTOS.h>
+    #include <freertos/task.h>
+    #include <nvs_flash.h>
+    #if ENABLE_WATCHDOG
+    #include <esp_task_wdt.h>
+    #endif
     #define TAG_MAIN "main"
 #else
-    // Arduino framework
+    // Arduino framework headers
     #include <Arduino.h>
+    #include <SPI.h>
 #endif
-#include "config.h"
+
+// Third-party library headers
+#include <ArduinoJson.h>
+
+// Project headers (continued)
+#include "esp_idf_compat.h"
+#include "esp_system_compat.h"
+#include "flow_meter.h"
 #include "lvgl_display.h"
 #include "lvgl_touch.h"
+#include "mqtt_manager.h"
 #include "splashscreen.h"
 #include "wifi_manager.h"
-#include "mqtt_manager.h"
-#include "flow_meter.h"
-#ifdef ESP_PLATFORM
-    // ESP-IDF: SPI and JSON will need ESP-IDF equivalents
-    // For now, we'll need to replace these
-    #include "driver/spi_master.h"
-    #include "ArduinoJson.h"  // ArduinoJson might work with ESP-IDF
-#else
-    // Arduino framework
-    #include <SPI.h>
-    #include <ArduinoJson.h>
-#endif
-#if ENABLE_WATCHDOG
-#include "esp_task_wdt.h"
-#endif
 
 // Include mode-specific UI based on configuration
 #if TEST_MODE
@@ -318,7 +318,8 @@ extern "C" void app_main() {
         .trigger_panic = true
     };
     esp_task_wdt_init(&wdt_config);
-    esp_task_wdt_add(NULL);
+    // Don't add app_main to watchdog - it will exit quickly
+    // The main loop task will be added after it's created
     ESP_LOGI(TAG_MAIN, "[Setup] Watchdog enabled (%d second timeout)", WATCHDOG_TIMEOUT_SEC);
     #endif
     
@@ -643,12 +644,24 @@ void setup() {
 void loop_body();
 
     // ESP-IDF: Create main loop task instead of using loop()
+    TaskHandle_t main_loop_task_handle = NULL;
     xTaskCreate([](void* param) {
+        #if ENABLE_WATCHDOG
+        // Add this task to the watchdog (must be done from within the task)
+        esp_task_wdt_add(NULL);
+        ESP_LOGI(TAG_MAIN, "[Main Loop] Task added to watchdog");
+        #endif
         while (1) {
             loop_body();
             vTaskDelay(pdMS_TO_TICKS(5));
         }
-    }, "main_loop", 8192, NULL, 5, NULL);
+    }, "main_loop", 8192, NULL, 5, &main_loop_task_handle);
+    
+    #if ENABLE_WATCHDOG
+    // Wait a bit for the task to start and register itself
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGI(TAG_MAIN, "[Setup] Main loop task created, watchdog should be active");
+    #endif
 #endif
 }
 

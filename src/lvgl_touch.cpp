@@ -12,24 +12,28 @@
  * Touch screen uses separate SPI pins: GPIO25(SCLK), GPIO32(MOSI), GPIO39(MISO)
  */
 
-#include "lvgl_touch.h"
+// Project headers
 #include "config.h"
+#include "lvgl_touch.h"
 
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
-    #include "driver/gpio.h"
+    // ESP-IDF framework headers
+    #include <driver/gpio.h>
+    #include <esp_log.h>
     #define TAG "touch"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
     
     // Arduino map() function compatibility
     static inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
     }
 #else
-    // Arduino framework
-    #include <SPI.h>
+    // Arduino framework headers
     #include <Arduino.h>
+    #include <SPI.h>
 #endif
 
 // Touch screen uses its own SPI bus (separate from LCD SPI)

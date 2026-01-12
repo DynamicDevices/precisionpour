@@ -75,21 +75,38 @@ extern SerialClass Serial;
 static inline void pinMode(int pin, int mode) {
     gpio_config_t io_conf = {};
     io_conf.pin_bit_mask = (1ULL << pin);
+    
+    // Check if pin is input-only (GPIO34, GPIO35, GPIO36, GPIO39 on ESP32)
+    // These pins don't support pullup/pulldown resistors
+    bool is_input_only = (pin == 34 || pin == 35 || pin == 36 || pin == 39);
+    
     if (mode == OUTPUT) {
         io_conf.mode = GPIO_MODE_OUTPUT;
         io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     } else if (mode & INPUT_PULLUP_FLAG) {
         io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        if (is_input_only) {
+            // Input-only pins don't support pullup - use external pullup or skip
+            // This is expected behavior for GPIO34, GPIO35, GPIO36, GPIO39
+            io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+            io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        } else {
+            io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+            io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        }
     } else {
         io_conf.mode = GPIO_MODE_INPUT;
         io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     }
     io_conf.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&io_conf);
+    esp_err_t ret = gpio_config(&io_conf);
+    // Note: gpio_config will return an error for pullup on input-only pins,
+    // but we've already handled that case above, so this should succeed
+    if (ret != ESP_OK && !is_input_only) {
+        ESP_LOGW("gpio", "GPIO%d config failed: %s", pin, esp_err_to_name(ret));
+    }
 }
 
 static inline void digitalWrite(int pin, int level) {
@@ -137,14 +154,30 @@ extern gpio_isr_handler_t gpio_isr_handlers[GPIO_NUM_MAX];
 static inline void attachInterrupt(int pin, voidFuncPtr func, int mode) {
     gpio_num_t gpio = (gpio_num_t)pin;
     
+    // Check if pin is input-only (GPIO34, GPIO35, GPIO36, GPIO39 on ESP32)
+    // These pins don't support pullup/pulldown resistors
+    bool is_input_only = (pin == 34 || pin == 35 || pin == 36 || pin == 39);
+    
     // Configure GPIO for interrupt
     gpio_config_t io_conf = {};
     io_conf.pin_bit_mask = (1ULL << pin);
     io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    if (is_input_only) {
+        // Input-only pins don't support pullup - use external pullup or skip
+        // This is expected behavior for GPIO34, GPIO35, GPIO36, GPIO39
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    } else {
+        io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    }
     io_conf.intr_type = (gpio_int_type_t)mode;
-    gpio_config(&io_conf);
+    esp_err_t ret = gpio_config(&io_conf);
+    // Note: gpio_config will return an error for pullup on input-only pins,
+    // but we've already handled that case above, so this should succeed
+    if (ret != ESP_OK && !is_input_only) {
+        ESP_LOGW("gpio", "GPIO%d interrupt config failed: %s", pin, esp_err_to_name(ret));
+    }
     
     // Store handler
     if (gpio < GPIO_NUM_MAX) {

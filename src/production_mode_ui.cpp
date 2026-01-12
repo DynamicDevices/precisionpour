@@ -12,27 +12,36 @@
  * PrecisionPour branded interface with logo, QR code, and payment instructions
  */
 
-#include "production_mode_ui.h"
+// Project headers
 #include "config.h"
+#include "images/precision_pour_logo.h"
+#include "mqtt_manager.h"
+#include "production_mode_ui.h"
+#include "wifi_manager.h"
+
+// System/Standard library headers
 #include <lvgl.h>
+#include <math.h>  // For sin() function for pulsing animation
+#include <string.h>
+
 #ifdef ESP_PLATFORM
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
-    #include "esp_mac.h"
-    #include "esp_chip_info.h"
-    #include "esp_system.h"
+    // ESP-IDF framework headers
+    #include <esp_chip_info.h>
+    #include <esp_log.h>
+    #include <esp_mac.h>
+    #include <esp_system.h>
     #define TAG "production_ui"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
 #else
+    // Arduino framework headers
     #include <Arduino.h>
+    
+    // ESP32 Arduino headers
     #include "esp_efuse.h"
     #include "esp_system.h"
 #endif
-#include <string.h>
-#include "wifi_manager.h"
-#include "mqtt_manager.h"
-// Use the logo image (extracted from splashscreen)
-#include "images/precision_pour_logo.h"
-#include <math.h>  // For sin() function for pulsing animation
 
 // UI objects
 static lv_obj_t *logo_container = NULL;

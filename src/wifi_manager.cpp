@@ -13,38 +13,46 @@
  * Supports Improv WiFi BLE provisioning for credential setup
  */
 
-#include "wifi_manager.h"
+// Project headers
 #include "config.h"
+#include "wifi_manager.h"
 
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework
-    #include "esp_idf_compat.h"
-    #include "esp_system_compat.h"
-    #include "esp_wifi.h"
-    #include "esp_event.h"
-    #include "esp_log.h"
-    #include "nvs_flash.h"
-    #include "nvs.h"
-    #include "esp_netif.h"
-    #include <string>
+    // ESP-IDF framework headers
+    #include <esp_event.h>
+    #include <esp_log.h>
+    #include <esp_mac.h>
+    #include <esp_netif.h>
+    #include <esp_system.h>
+    #include <esp_wifi.h>
+    #include <nvs.h>
+    #include <nvs_flash.h>
     #include <cstring>
+    #include <string>
     #define TAG "wifi"
     
-    // Improv WiFi BLE (if enabled)
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
+    #include "esp_system_compat.h"
+    
+    // Third-party library headers (if enabled)
     #if USE_IMPROV_WIFI
         #include <ImprovWiFiBLE.h>
-        #include <NimBLEDevice.h>
         #include <NimBLEAdvertising.h>
+        #include <NimBLEDevice.h>
     #endif
 #else
-    // Arduino framework
+    // Arduino framework headers
     #include <Arduino.h>
     #include <Preferences.h>
     #include <ImprovWiFiBLE.h>
+    #include <NimBLEAdvertising.h>
+    #include <NimBLEDevice.h>
+    
+    // ESP32 Arduino headers
     #include "esp_efuse.h"
     #include "esp_system.h"
-    #include <NimBLEDevice.h>
-    #include <NimBLEAdvertising.h>
 #endif
 
 // EEPROM/Preferences keys for storing WiFi credentials
@@ -99,7 +107,9 @@ static bool improv_provisioning_active = false;
 
 // Forward declarations
 static bool connect_to_wifi(const String& ssid, const String& password);
+#if USE_IMPROV_WIFI
 static void save_credentials(const String& ssid, const String& password);
+#endif
 static bool load_saved_credentials(String& ssid, String& password);
 
 // Improv WiFi BLE instance
@@ -245,6 +255,7 @@ static bool load_saved_credentials(String& ssid, String& password) {
 /**
  * Save WiFi credentials to NVS/Preferences
  */
+#if USE_IMPROV_WIFI
 static void save_credentials(const String& ssid, const String& password) {
     #ifdef ESP_PLATFORM
         // ESP-IDF: Use NVS
@@ -288,6 +299,7 @@ static void save_credentials(const String& ssid, const String& password) {
         Serial.printf("[WiFi] Saved credentials for: %s\r\n", ssid.c_str());
     #endif
 }
+#endif // USE_IMPROV_WIFI
 
 /**
  * Connect to WiFi network
@@ -428,11 +440,9 @@ bool wifi_manager_init() {
     #endif
     
     String ssid, password;
-    bool use_saved = false;
     
     // Try to load saved credentials first
     if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
-        use_saved = true;
         #ifdef ESP_PLATFORM
             ESP_LOGI(TAG, "[WiFi] Using saved credentials");
         #else
@@ -719,11 +729,9 @@ void wifi_manager_loop() {
             #endif
             
             String ssid, password;
-            bool use_saved = false;
             
             // Try saved credentials first
             if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
-                use_saved = true;
             } else {
                 ssid = String(WIFI_SSID);
                 password = String(WIFI_PASSWORD);

@@ -11,17 +11,21 @@
  * Compatible with LVGL v8.x
  */
 
-#include "lvgl_display.h"
+// Project headers
 #include "config.h"
+#include "lvgl_display.h"
 
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework: Use ESP-IDF SPI driver
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
-    #include "driver/spi_master.h"
-    #include "driver/gpio.h"
+    // ESP-IDF framework headers
+    #include <driver/gpio.h>
+    #include <driver/spi_master.h>
+    #include <esp_log.h>
     #include <string.h>
     #define TAG "display"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
     
     // ESP-IDF SPI handle
     static spi_device_handle_t spi_handle = NULL;
@@ -35,6 +39,14 @@
     #define ILI9341_RAMWR       0x2C
     #define ILI9341_MADCTL      0x36
     #define ILI9341_PIXFMT      0x3A
+    #define ILI9341_PWRCTL1     0xC0
+    #define ILI9341_PWRCTL2     0xC1
+    #define ILI9341_VMCTL1      0xC5
+    #define ILI9341_VMCTL2      0xC7
+    #define ILI9341_FRMCTR1     0xB1
+    #define ILI9341_DFUNCTR     0xB6
+    #define ILI9341_GMCTRP1     0xE0
+    #define ILI9341_GMCTRN1     0xE1
     
     // Helper function to send command
     static void ili9341_send_cmd(uint8_t cmd) {
@@ -67,98 +79,6 @@
         }
     }
     
-    // Initialize ILI9341 display
-    static void ili9341_init() {
-        ESP_LOGI(TAG, "Initializing ILI9341 display...");
-        
-        // Configure SPI bus
-        spi_bus_config_t bus_cfg = {};
-        bus_cfg.mosi_io_num = TFT_MOSI;
-        bus_cfg.miso_io_num = TFT_MISO;
-        bus_cfg.sclk_io_num = TFT_SCLK;
-        bus_cfg.quadwp_io_num = -1;
-        bus_cfg.quadhd_io_num = -1;
-        bus_cfg.max_transfer_sz = DISPLAY_WIDTH * DISPLAY_HEIGHT * 2;  // 2 bytes per pixel
-        
-        ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
-        
-        // Configure SPI device
-        spi_device_interface_config_t dev_cfg = {};
-        dev_cfg.clock_speed_hz = 27000000;  // 27 MHz
-        dev_cfg.mode = 0;
-        dev_cfg.spics_io_num = TFT_CS;
-        dev_cfg.queue_size = 1;
-        dev_cfg.flags = 0;
-        dev_cfg.pre_cb = NULL;
-        
-        ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &dev_cfg, &spi_handle));
-        
-        // Configure control pins
-        gpio_set_direction((gpio_num_t)TFT_DC, GPIO_MODE_OUTPUT);
-        gpio_set_direction((gpio_num_t)TFT_RST, GPIO_MODE_OUTPUT);
-        gpio_set_direction((gpio_num_t)TFT_BL, GPIO_MODE_OUTPUT);
-        
-        // Reset display
-        gpio_set_level((gpio_num_t)TFT_RST, 0);
-        delay(10);
-        gpio_set_level((gpio_num_t)TFT_RST, 1);
-        delay(10);
-        
-        // Initialize ILI9341
-        ili9341_send_cmd(ILI9341_SWRESET);
-        delay(120);
-        
-        ili9341_send_cmd(ILI9341_SLPOUT);
-        delay(120);
-        
-        // Memory Access Control (MADCTL) - rotation
-        uint8_t madctl = 0x00;
-        if (DISPLAY_ROTATION == 1) {
-            madctl = 0x20 | 0x08;  // Landscape, BGR
-        } else if (DISPLAY_ROTATION == 3) {
-            madctl = 0x20 | 0x08 | 0x40 | 0x80;  // Landscape flipped, BGR
-        } else {
-            madctl = 0x08;  // Portrait, BGR
-        }
-        ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
-        
-        // Pixel format: 16-bit color
-        uint8_t pixfmt = 0x55;  // 16-bit/pixel
-        ili9341_send_cmd_data(ILI9341_PIXFMT, &pixfmt, 1);
-        
-        ili9341_send_cmd(ILI9341_DISPLAYON);
-        delay(10);
-        
-        // Clear screen (set window first, then send data)
-        uint8_t data[4];
-        
-        // Column address set
-        data[0] = 0x00;
-        data[1] = 0x00;
-        data[2] = ((DISPLAY_WIDTH - 1) >> 8) & 0xFF;
-        data[3] = (DISPLAY_WIDTH - 1) & 0xFF;
-        ili9341_send_cmd_data(ILI9341_CASET, data, 4);
-        
-        // Row address set
-        data[0] = 0x00;
-        data[1] = 0x00;
-        data[2] = ((DISPLAY_HEIGHT - 1) >> 8) & 0xFF;
-        data[3] = (DISPLAY_HEIGHT - 1) & 0xFF;
-        ili9341_send_cmd_data(ILI9341_PASET, data, 4);
-        
-        // Write to RAM
-        ili9341_send_cmd(ILI9341_RAMWR);
-        uint16_t black = 0x0000;
-        for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) {
-            ili9341_send_data((uint8_t*)&black, 2);
-        }
-        
-        // Enable backlight
-        gpio_set_level((gpio_num_t)TFT_BL, 1);
-        
-        ESP_LOGI(TAG, "ILI9341 initialized");
-    }
-    
     // Forward declaration
     static void ili9341_set_window(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
     
@@ -182,6 +102,144 @@
         
         // Write to RAM
         ili9341_send_cmd(ILI9341_RAMWR);
+    }
+    
+    // Initialize ILI9341 display
+    static void ili9341_init() {
+        ESP_LOGI(TAG, "Initializing ILI9341 display...");
+        
+        // Configure SPI bus
+        spi_bus_config_t bus_cfg = {};
+        bus_cfg.mosi_io_num = TFT_MOSI;
+        bus_cfg.miso_io_num = TFT_MISO;
+        bus_cfg.sclk_io_num = TFT_SCLK;
+        bus_cfg.quadwp_io_num = -1;
+        bus_cfg.quadhd_io_num = -1;
+        bus_cfg.max_transfer_sz = DISPLAY_WIDTH * DISPLAY_HEIGHT * 2;  // 2 bytes per pixel
+        
+        // Use SPI2_HOST (HSPI) for ESP32
+        ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO));
+        
+        // Configure SPI device
+        spi_device_interface_config_t dev_cfg = {};
+        dev_cfg.clock_speed_hz = 27000000;  // 27 MHz
+        dev_cfg.mode = 0;
+        dev_cfg.spics_io_num = TFT_CS;
+        dev_cfg.queue_size = 1;
+        dev_cfg.flags = 0;
+        dev_cfg.pre_cb = NULL;
+        
+        ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &dev_cfg, &spi_handle));
+        
+        // Configure control pins
+        gpio_set_direction((gpio_num_t)TFT_DC, GPIO_MODE_OUTPUT);
+        gpio_set_direction((gpio_num_t)TFT_RST, GPIO_MODE_OUTPUT);
+        gpio_set_direction((gpio_num_t)TFT_BL, GPIO_MODE_OUTPUT);
+        
+        // Reset display
+        gpio_set_level((gpio_num_t)TFT_RST, 0);
+        delay(10);
+        gpio_set_level((gpio_num_t)TFT_RST, 1);
+        delay(10);
+        
+        // Initialize ILI9341 with complete sequence
+        ili9341_send_cmd(ILI9341_SWRESET);
+        delay(120);
+        
+        // Power Control 1
+        uint8_t pwr1_data[] = {0x23};
+        ili9341_send_cmd_data(ILI9341_PWRCTL1, pwr1_data, 1);
+        
+        // Power Control 2
+        uint8_t pwr2_data[] = {0x10};
+        ili9341_send_cmd_data(ILI9341_PWRCTL2, pwr2_data, 1);
+        
+        // VCOM Control 1
+        uint8_t vcom_data[] = {0x2E, 0x86};
+        ili9341_send_cmd_data(ILI9341_VMCTL1, vcom_data, 2);
+        
+        // VCOM Control 2
+        uint8_t vcom2_data[] = {0xC0};
+        ili9341_send_cmd_data(ILI9341_VMCTL2, vcom2_data, 1);
+        
+        // Memory Access Control (MADCTL) - rotation
+        uint8_t madctl = 0x00;
+        if (DISPLAY_ROTATION == 1) {
+            madctl = 0x20 | 0x08;  // Landscape, BGR
+        } else if (DISPLAY_ROTATION == 3) {
+            madctl = 0x20 | 0x08 | 0x40 | 0x80;  // Landscape flipped, BGR
+        } else {
+            madctl = 0x08;  // Portrait, BGR
+        }
+        ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
+        
+        // Pixel format: 16-bit color
+        uint8_t pixfmt = 0x55;  // 16-bit/pixel
+        ili9341_send_cmd_data(ILI9341_PIXFMT, &pixfmt, 1);
+        
+        // Frame Rate Control
+        uint8_t frctrl_data[] = {0x00, 0x18};
+        ili9341_send_cmd_data(ILI9341_FRMCTR1, frctrl_data, 2);
+        
+        // Display Function Control
+        uint8_t dfunc_data[] = {0x08, 0x82, 0x27};
+        ili9341_send_cmd_data(ILI9341_DFUNCTR, dfunc_data, 3);
+        
+        // Sleep out
+        ili9341_send_cmd(ILI9341_SLPOUT);
+        delay(120);
+        
+        // Display on
+        ili9341_send_cmd(ILI9341_DISPLAYON);
+        delay(10);
+        
+        // Clear screen (set window first, then send data)
+        uint8_t data[4];
+        
+        // Column address set
+        data[0] = 0x00;
+        data[1] = 0x00;
+        data[2] = ((DISPLAY_WIDTH - 1) >> 8) & 0xFF;
+        data[3] = (DISPLAY_WIDTH - 1) & 0xFF;
+        ili9341_send_cmd_data(ILI9341_CASET, data, 4);
+        
+        // Row address set
+        data[0] = 0x00;
+        data[1] = 0x00;
+        data[2] = ((DISPLAY_HEIGHT - 1) >> 8) & 0xFF;
+        data[3] = (DISPLAY_HEIGHT - 1) & 0xFF;
+        ili9341_send_cmd_data(ILI9341_PASET, data, 4);
+        
+        // Write to RAM - clear screen more efficiently
+        ili9341_send_cmd(ILI9341_RAMWR);
+        gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
+        
+        // Send black pixels in chunks
+        uint16_t black = 0x0000;
+        const size_t clear_chunk_size = 1024;  // 1024 pixels = 2048 bytes
+        size_t total_pixels = DISPLAY_WIDTH * DISPLAY_HEIGHT;
+        
+        for (size_t i = 0; i < total_pixels; i += clear_chunk_size) {
+            size_t chunk_pixels = (total_pixels - i > clear_chunk_size) ? clear_chunk_size : (total_pixels - i);
+            size_t chunk_bytes = chunk_pixels * 2;
+            
+            // Create a buffer of black pixels
+            uint16_t black_buffer[clear_chunk_size];
+            for (size_t j = 0; j < chunk_pixels; j++) {
+                black_buffer[j] = black;
+            }
+            
+            spi_transaction_t t = {};
+            t.length = chunk_bytes * 8;
+            t.tx_buffer = black_buffer;
+            t.flags = 0;
+            spi_device_transmit(spi_handle, &t);
+        }
+        
+        // Enable backlight
+        gpio_set_level((gpio_num_t)TFT_BL, 1);
+        
+        ESP_LOGI(TAG, "ILI9341 initialized");
     }
     
 #else
@@ -240,17 +298,48 @@ void lvgl_display_init() {
 void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *color_p) {
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
+    uint32_t pixel_count = w * h;
     
     #ifdef ESP_PLATFORM
         // ESP-IDF: Use SPI to send pixel data
+        static bool first_flush = true;
+        if (first_flush) {
+            ESP_LOGI(TAG, "First flush: area (%d,%d) to (%d,%d), %dx%d pixels", 
+                     area->x1, area->y1, area->x2, area->y2, w, h);
+            first_flush = false;
+        }
+        
         ili9341_set_window(area->x1, area->y1, area->x2, area->y2);
         
-        // Send pixel data
+        // Send pixel data in chunks (SPI has max transfer size limits)
+        // Max chunk size: 4092 bytes (ESP-IDF default, but we'll use 4096 for safety)
+        const size_t max_chunk_bytes = 4096;
+        const size_t max_chunk_pixels = max_chunk_bytes / 2;  // 2 bytes per pixel
+        
         gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
-        spi_transaction_t t = {};
-        t.length = w * h * 16;  // 16 bits per pixel
-        t.tx_buffer = color_p;
-        spi_device_transmit(spi_handle, &t);
+        
+        uint16_t *pixels = (uint16_t *)color_p;
+        size_t remaining_pixels = pixel_count;
+        size_t offset = 0;
+        
+        while (remaining_pixels > 0) {
+            size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
+            size_t chunk_bytes = chunk_pixels * 2;
+            
+            spi_transaction_t t = {};
+            t.length = chunk_bytes * 8;  // Length in bits
+            t.tx_buffer = pixels + offset;
+            t.flags = 0;  // No special flags
+            
+            esp_err_t ret = spi_device_transmit(spi_handle, &t);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "SPI transmit error: %s", esp_err_to_name(ret));
+                break;
+            }
+            
+            offset += chunk_pixels;
+            remaining_pixels -= chunk_pixels;
+        }
     #else
         // Arduino: Use TFT_eSPI
         tft.startWrite();

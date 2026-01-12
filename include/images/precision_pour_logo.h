@@ -9,6 +9,11 @@
 
 #include <lvgl.h>
 
+// Suppress warnings about missing initializers for always_zero and reserved fields
+// These fields are automatically zero-initialized and don't need explicit values
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 const uint8_t precision_pour_logo_data[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2817,9 +2822,12 @@ const lv_img_dsc_t precision_pour_logo = {
         .cf = LV_IMG_CF_TRUE_COLOR,  // RGB565 format
         .w = 280,
         .h = 80,
+        // always_zero and reserved fields are automatically zero-initialized
     },
     .data_size = 44800,
     .data = precision_pour_logo_data,
 };
+
+#pragma GCC diagnostic pop
 
 #endif // PRECISION_POUR_LOGO_H

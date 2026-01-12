@@ -12,20 +12,23 @@
  * YF-S201 Hall Effect Flow Sensor reading and calculations
  */
 
-// Use ESP_PLATFORM for framework detection (ESP-IDF always defines this)
+// Project headers
+#include "config.h"
+#include "flow_meter.h"
+
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework - include compat layer first
-    #include "esp_idf_compat.h"
-    #include "driver/gpio.h"
-    #include "esp_log.h"
+    // ESP-IDF framework headers
+    #include <driver/gpio.h>
+    #include <esp_log.h>
     #define TAG "flow_meter"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
 #else
-    // Arduino framework
+    // Arduino framework headers
     #include <Arduino.h>
 #endif
-
-#include "flow_meter.h"
-#include "config.h"
 
 // Flow meter constants
 #define PULSES_PER_LITER 450        // YF-S201 outputs 450 pulses per liter

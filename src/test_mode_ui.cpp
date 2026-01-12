@@ -12,14 +12,21 @@
  * Comprehensive hardware testing interface
  */
 
-#include "test_mode_ui.h"
+// Project headers
 #include "config.h"
 #include "lvgl_touch.h"
+#include "test_mode_ui.h"
+
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
+    // ESP-IDF framework headers
+    #include <esp_log.h>
     #define TAG "test_ui"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
 #else
+    // Arduino framework headers
     #include <Arduino.h>
 #endif
 

@@ -12,19 +12,23 @@
  * Handles MQTT connection, subscription, and message handling
  */
 
-#include "mqtt_manager.h"
+// Project headers
 #include "config.h"
+#include "mqtt_manager.h"
 #include "wifi_manager.h"
 
+// System/Standard library headers
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework
-    #include "esp_idf_compat.h"
-    #include "esp_log.h"
-    #include "mqtt_client.h"  // ESP-IDF MQTT client component (from components/mqtt/esp-mqtt/include)
-    #include "esp_netif.h"
-    #include <string.h>
+    // ESP-IDF framework headers
+    #include <esp_log.h>
+    #include <esp_netif.h>
+    #include <mqtt_client.h>  // ESP-IDF MQTT client component
     #include <cstring>
+    #include <string.h>
     #define TAG "mqtt"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
     
     static esp_mqtt_client_handle_t mqtt_client_handle = NULL;
 #else
