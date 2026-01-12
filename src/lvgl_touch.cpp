@@ -42,11 +42,18 @@ static int16_t touch_y = 0;
 
 // IRQ pin monitoring
 static volatile bool irq_triggered = false;
+static volatile unsigned long last_irq_time = 0;
 static int last_irq_state = -1;
+static const unsigned long IRQ_DEBOUNCE_MS = 50;  // Debounce time: ignore interrupts within 50ms
 
 // IRQ interrupt handler
 void IRAM_ATTR irq_handler() {
-    irq_triggered = true;
+    unsigned long now = millis();
+    // Debounce: only set flag if enough time has passed since last interrupt
+    if (now - last_irq_time > IRQ_DEBOUNCE_MS) {
+        irq_triggered = true;
+        last_irq_time = now;
+    }
 }
 
 /**
@@ -188,8 +195,9 @@ void lvgl_touch_init() {
     if (TOUCH_IRQ >= 0) {
         pinMode(TOUCH_IRQ, INPUT_PULLUP);
         last_irq_state = digitalRead(TOUCH_IRQ);
-        attachInterrupt(digitalPinToInterrupt(TOUCH_IRQ), irq_handler, CHANGE);
-        Serial.printf("[Touch] IRQ pin configured: GPIO%d (initial state: %s)\r\n", 
+        // Use FALLING edge only (LOW = pressed) to reduce false triggers
+        attachInterrupt(digitalPinToInterrupt(TOUCH_IRQ), irq_handler, FALLING);
+        Serial.printf("[Touch] IRQ pin configured: GPIO%d (initial state: %s, FALLING edge)\r\n", 
                       TOUCH_IRQ, last_irq_state == LOW ? "LOW (pressed)" : "HIGH (not pressed)");
     } else {
         Serial.println("[Touch] WARNING: No IRQ pin configured!");
@@ -232,16 +240,23 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         int irq_state = digitalRead(TOUCH_IRQ);
         irq_pressed = (irq_state == LOW);
         
-        // Log IRQ state changes
+        // Log IRQ state changes (only meaningful transitions)
         if (irq_state != last_irq_state) {
-            Serial.printf("[Touch] IRQ pin changed: %d -> %d (LOW=pressed)\r\n", last_irq_state, irq_state);
+            // Only log if it's a transition to LOW (pressed) or from LOW to HIGH (released)
+            // This filters out noise and rapid state changes
+            if (irq_state == LOW || last_irq_state == LOW) {
+                Serial.printf("[Touch] IRQ pin changed: %d -> %d (LOW=pressed)\r\n", last_irq_state, irq_state);
+            }
             last_irq_state = irq_state;
         }
         
-        // Clear interrupt flag
+        // Clear interrupt flag (only log if we actually detect a press via pressure too)
         if (irq_triggered) {
             irq_triggered = false;
-            Serial.println("[Touch] IRQ interrupt triggered");
+            // Only log if pressure also indicates a press (reduces false positives)
+            if (pressure_pressed) {
+                // Don't log here - will be logged in the pressed section below
+            }
         }
     }
     
