@@ -182,25 +182,28 @@
         // Bit 1 (0x02): MX (column address order)
         // Bit 2 (0x04): MV (row/column exchange)
         // Bit 3 (0x08): ML (vertical refresh order)
-        // Bit 4 (0x10): BGR (0=RGB, 1=BGR) - try RGB mode (BGR=0) first
-        // Bit 5 (0x20): MH (horizontal refresh order)
-        // Bit 6 (0x40): Reserved
-        // Bit 7 (0x80): Reserved
+        // Bit 3 (0x08): BGR (0=RGB, 1=BGR) - controls color order
+        // Bit 4 (0x10): ML (vertical refresh order)
+        // Bit 5 (0x20): MV (row/column exchange)
+        // Bit 6 (0x40): MX (column address order)
+        // Bit 7 (0x80): MY (row address order)
         // 
-        // Note: LVGL outputs RGB565 in RGB order
-        // If colors are wrong, try toggling BGR bit (0x10) or check byte order
-        // For landscape (rotation 1): MX=1, MH=1, RGB mode (BGR=0)
-        // For portrait (rotation 0/2): MV=1, RGB mode (BGR=0)
+        // Note: TFT_eSPI defaults to BGR mode (TFT_MAD_COLOR_ORDER = TFT_MAD_BGR = 0x08)
+        // Match TFT_eSPI rotation settings for compatibility:
+        // Rotation 0: MX=1, BGR=1 -> 0x40 | 0x08 = 0x48
+        // Rotation 1: MV=1, BGR=1 -> 0x20 | 0x08 = 0x28
+        // Rotation 2: MY=1, BGR=1 -> 0x80 | 0x08 = 0x88
+        // Rotation 3: MX=1, MY=1, MV=1, BGR=1 -> 0x40 | 0x80 | 0x20 | 0x08 = 0xE8
         uint8_t madctl = 0x00;
         if (DISPLAY_ROTATION == 1) {
-            // Landscape: MX=1, MH=1, RGB mode (BGR=0)
-            madctl = 0x20 | 0x02;  // MH=1, MX=1, BGR=0
+            // Landscape: MV=1, BGR=1 (matches TFT_eSPI rotation 1)
+            madctl = 0x20 | 0x08;  // MV=1, BGR=1 (bit 3)
         } else if (DISPLAY_ROTATION == 3) {
-            // Landscape flipped: MY=1, MX=1, MV=1, MH=1, RGB mode
-            madctl = 0x80 | 0x20 | 0x02 | 0x01;  // MY, MH, MX, MV, BGR=0
+            // Landscape flipped: MX=1, MY=1, MV=1, BGR=1 (matches TFT_eSPI rotation 3)
+            madctl = 0x40 | 0x80 | 0x20 | 0x08;  // MX, MY, MV, BGR=1
         } else {
-            // Portrait: MV=1, RGB mode
-            madctl = 0x04;  // MV=1, BGR=0
+            // Portrait: MV=1, BGR=1 (matches TFT_eSPI rotation 0/2)
+            madctl = 0x20 | 0x08;  // MV=1, BGR=1 (bit 3)
         }
         ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
         
@@ -360,19 +363,32 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
         gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
         
         // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
-        // Display is configured for RGB mode (BGR=0 in MADCTL)
-        // Send pixels directly - no color swapping needed (WiFi icon colors are correct)
+        // TFT_eSPI pushColors is called with swap=true, which swaps bytes of each pixel
+        // We need to match this behavior: swap high and low bytes of each 16-bit pixel
+        // Example: 0xF800 (little-endian) -> 0x00F8 (byte-swapped)
         uint16_t *pixels = (uint16_t *)color_p;
         size_t remaining_pixels = pixel_count;
         size_t offset = 0;
+        
+        // Allocate buffer for byte-swapped pixels
+        static uint16_t swapped_buffer[4096];  // Max chunk size
+        const size_t max_buffer_pixels = sizeof(swapped_buffer) / sizeof(swapped_buffer[0]);
         
         while (remaining_pixels > 0) {
             size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
             size_t chunk_bytes = chunk_pixels * 2;
             
+            // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
+            size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
+            for (size_t i = 0; i < buffer_pixels; i++) {
+                uint16_t pixel = pixels[offset + i];
+                // Swap high and low bytes: 0x1234 -> 0x3412
+                swapped_buffer[i] = ((pixel & 0xFF) << 8) | ((pixel >> 8) & 0xFF);
+            }
+            
             spi_transaction_t t = {};
-            t.length = chunk_bytes * 8;  // Length in bits
-            t.tx_buffer = pixels + offset;
+            t.length = buffer_pixels * 2 * 8;  // Length in bits
+            t.tx_buffer = swapped_buffer;
             t.flags = 0;  // No special flags
             
             esp_err_t ret = spi_device_transmit(spi_handle, &t);
@@ -381,8 +397,8 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
                 break;
             }
             
-            offset += chunk_pixels;
-            remaining_pixels -= chunk_pixels;
+            offset += buffer_pixels;
+            remaining_pixels -= buffer_pixels;
         }
     #else
         // Arduino: Use TFT_eSPI

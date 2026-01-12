@@ -4,6 +4,7 @@
 # All rights reserved.
 #
 # Convert Precision Pour logo image to LVGL C array format (RGB565)
+# WITHOUT G/B swap - for testing if main logo needs different handling
 #
 
 from PIL import Image
@@ -11,9 +12,9 @@ import os
 import sys
 
 
-def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_logo"):
+def convert_to_lvgl_rgb565_no_swap(input_path, output_path, var_name="precision_pour_logo"):
     """
-    Convert PNG logo image to LVGL RGB565 C array format
+    Convert PNG logo image to LVGL RGB565 C array format WITHOUT G/B swap
     
     Args:
         input_path: Path to input PNG image
@@ -32,22 +33,18 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
             img = img.convert('RGB')
         
         width, height = img.size
-        print(f"Converting logo: {width}x{height} pixels")
+        print(f"Converting logo (NO SWAP): {width}x{height} pixels")
         
         # Get pixel data
         pixels = img.load()
         
-        # Convert to RGB565 format
+        # Convert to RGB565 format WITHOUT G/B swap
         # RGB565 format: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
-        # Display is configured for BGR mode, so colors display correctly without swapping
         rgb565_data = []
         for y in range(height):
             for x in range(width):
                 r, g, b = pixels[x, y]
-                # Convert RGB888 to RGB565 (standard conversion, no G/B swap)
-                # R: 5 bits in position 15-11
-                # G: 6 bits in position 10-5
-                # B: 5 bits in position 4-0
+                # Convert RGB888 to RGB565 (standard, no swap)
                 rgb565 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
                 # Store as little-endian (2 bytes)
                 rgb565_data.append(rgb565 & 0xFF)  # Low byte
@@ -58,7 +55,7 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
             f.write("/**\n")
             f.write(f" * Precision Pour Logo\n")
             f.write(f" * Generated from: {os.path.basename(input_path)}\n")
-            f.write(f" * Format: RGB565, Size: {width}x{height}\n")
+            f.write(f" * Format: RGB565 (NO G/B SWAP), Size: {width}x{height}\n")
             f.write(" */\n\n")
             f.write(f"#ifndef {var_name.upper()}_H\n")
             f.write(f"#define {var_name.upper()}_H\n\n")
@@ -91,20 +88,12 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
             f.write(f"    .data_size = {len(rgb565_data)},\n")
             f.write(f"    .data = {var_name}_data,\n")
             f.write("};\n\n")
+            
             f.write("#pragma GCC diagnostic pop\n\n")
             f.write(f"#endif // {var_name.upper()}_H\n")
         
         print(f"✓ Converted to: {output_path}")
-        print(f"  Size: {len(rgb565_data)} bytes ({width}x{height} RGB565)")
-        
-        # Calculate space saved compared to full splashscreen
-        splashscreen_size = 153600  # 320x240x2 bytes
-        if len(rgb565_data) < splashscreen_size:
-            saved = splashscreen_size - len(rgb565_data)
-            percent = (saved / splashscreen_size) * 100
-            print(f"  Original splashscreen: {splashscreen_size} bytes")
-            print(f"  Logo size: {len(rgb565_data)} bytes")
-            print(f"  Space saved: {saved} bytes ({percent:.1f}%)")
+        print(f"  Size: {len(rgb565_data)} bytes ({width}x{height} RGB565, NO G/B SWAP)")
         
         return width, height
     
@@ -129,7 +118,7 @@ def main():
         print(f"Run extract_logo.py first to create the logo image", file=sys.stderr)
         sys.exit(1)
     
-    convert_to_lvgl_rgb565(input_image, output_header)
+    convert_to_lvgl_rgb565_no_swap(input_image, output_header)
 
 
 if __name__ == "__main__":
