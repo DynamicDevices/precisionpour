@@ -14,6 +14,7 @@
 
 // Project headers
 #include "config.h"
+#include "images/test_logo.h"
 #include "lvgl_touch.h"
 #include "test_mode_ui.h"
 
@@ -40,6 +41,7 @@ static lv_obj_t *tab_rfid = NULL;
 // Display test objects
 static lv_obj_t *label_display_title;
 static lv_obj_t *label_display_info;
+static lv_obj_t *test_logo_img = NULL;  // Test logo image (color bars)
 static lv_obj_t *btn_color_test;
 static lv_obj_t *label_color_status;
 
@@ -135,6 +137,18 @@ void test_mode_init() {
         "Colors: 16-bit RGB565",
         DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_ROTATION);
     lv_obj_align(label_display_info, LV_ALIGN_TOP_MID, 0, 40);
+    
+    // Create test logo image (color bars: Red, Green, Blue, Yellow, Cyan, Magenta, White, Black)
+    test_logo_img = lv_img_create(tab_display);
+    if (test_logo_img != NULL) {
+        lv_img_set_src(test_logo_img, &test_logo);
+        lv_obj_align(test_logo_img, LV_ALIGN_TOP_MID, 0, 80);
+        #ifdef ESP_PLATFORM
+            ESP_LOGI(TAG, "[Test UI] Test logo created (color bars for color testing)");
+        #else
+            Serial.println("[Test UI] Test logo created (color bars for color testing)");
+        #endif
+    }
     
     btn_color_test = lv_btn_create(tab_display);
     lv_obj_set_size(btn_color_test, 200, 40);

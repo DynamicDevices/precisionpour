@@ -182,25 +182,25 @@
         // Bit 1 (0x02): MX (column address order)
         // Bit 2 (0x04): MV (row/column exchange)
         // Bit 3 (0x08): ML (vertical refresh order)
-        // Bit 4 (0x10): BGR (0=RGB, 1=BGR) - we use BGR (1) to match LVGL RGB565 output
+        // Bit 4 (0x10): BGR (0=RGB, 1=BGR) - try RGB mode (BGR=0) first
         // Bit 5 (0x20): MH (horizontal refresh order)
         // Bit 6 (0x40): Reserved
         // Bit 7 (0x80): Reserved
         // 
-        // Note: ILI9341 interprets data differently - when BGR=1, it expects BGR order
-        // but LVGL outputs RGB565 in RGB order, so we need BGR=1 to swap the color channels
-        // For landscape (rotation 1): MX=1, MH=1, BGR=1 (BGR mode)
-        // For portrait (rotation 0/2): MV=1, BGR=1 (BGR mode)
+        // Note: LVGL outputs RGB565 in RGB order
+        // If colors are wrong, try toggling BGR bit (0x10) or check byte order
+        // For landscape (rotation 1): MX=1, MH=1, RGB mode (BGR=0)
+        // For portrait (rotation 0/2): MV=1, RGB mode (BGR=0)
         uint8_t madctl = 0x00;
         if (DISPLAY_ROTATION == 1) {
-            // Landscape: MX=1, MH=1, BGR mode (BGR=1)
-            madctl = 0x20 | 0x02 | 0x10;  // MH=1, MX=1, BGR=1
+            // Landscape: MX=1, MH=1, RGB mode (BGR=0)
+            madctl = 0x20 | 0x02;  // MH=1, MX=1, BGR=0
         } else if (DISPLAY_ROTATION == 3) {
-            // Landscape flipped: MY=1, MX=1, MV=1, MH=1, BGR mode
-            madctl = 0x80 | 0x20 | 0x02 | 0x01 | 0x10;  // MY, MH, MX, MV, BGR=1
+            // Landscape flipped: MY=1, MX=1, MV=1, MH=1, RGB mode
+            madctl = 0x80 | 0x20 | 0x02 | 0x01;  // MY, MH, MX, MV, BGR=0
         } else {
-            // Portrait: MV=1, BGR mode
-            madctl = 0x04 | 0x10;  // MV=1, BGR=1
+            // Portrait: MV=1, RGB mode
+            madctl = 0x04;  // MV=1, BGR=0
         }
         ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
         
@@ -359,9 +359,9 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
         
         gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
         
-        // LVGL outputs RGB565 in RGB order, display is configured for BGR mode (BGR bit set in MADCTL)
-        // The BGR bit swaps the color channels to match LVGL's RGB565 output
-        // No additional color swapping needed - send pixels directly
+        // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
+        // Display is configured for RGB mode (BGR=0 in MADCTL)
+        // Send pixels directly - no color swapping needed (WiFi icon colors are correct)
         uint16_t *pixels = (uint16_t *)color_p;
         size_t remaining_pixels = pixel_count;
         size_t offset = 0;

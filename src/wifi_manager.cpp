@@ -341,9 +341,8 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
         while (!wifi_connected && (millis() - start_time) < timeout) {
             #ifdef ESP_PLATFORM
                 vTaskDelay(pdMS_TO_TICKS(500));
-                #if ENABLE_WATCHDOG
-                esp_task_wdt_reset();  // Feed watchdog during connection wait
-                #endif
+                // Note: Don't reset watchdog here - this might be called from app_main
+                // before the main loop task is registered with the watchdog
             #else
                 delay(500);
             #endif

@@ -44,6 +44,7 @@ static char mqtt_subscribe_topic[128] = {0};
 static char mqtt_paid_topic[128] = {0};  // Topic for "paid" command
 static unsigned long last_reconnect_attempt = 0;
 static bool mqtt_connected = false;
+static bool mqtt_connecting = false;  // Track if we're in the process of connecting
 static unsigned long last_activity_time = 0;  // Track last TX/RX activity
 static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last TX/RX
 
@@ -60,6 +61,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT Connected");
             mqtt_connected = true;
+            mqtt_connecting = false;  // No longer connecting
             last_activity_time = millis();
             
             // Subscribe to device-specific command topics
@@ -78,6 +80,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         case MQTT_EVENT_DISCONNECTED:
             ESP_LOGW(TAG, "MQTT Disconnected");
             mqtt_connected = false;
+            mqtt_connecting = false;  // No longer connecting
             break;
             
         case MQTT_EVENT_SUBSCRIBED:
@@ -167,6 +170,7 @@ bool mqtt_client_reconnect(const char* chip_id) {
             Serial.println("[MQTT] WiFi not connected, skipping MQTT connection");
         #endif
         mqtt_connected = false;
+        mqtt_connecting = false;
         return false;
     }
     
@@ -176,26 +180,52 @@ bool mqtt_client_reconnect(const char* chip_id) {
         if (ip.empty() || ip == std::string("Not connected")) {
             ESP_LOGW(TAG, "[MQTT] No IP address assigned, waiting for DHCP...");
             mqtt_connected = false;
+            mqtt_connecting = false;
             return false;
         }
         
-        ESP_LOGI(TAG, "[MQTT] Attempting to connect...");
-        ESP_LOGI(TAG, "[MQTT] WiFi IP: %s", ip.c_str());
-        
         // Start MQTT client (will connect automatically)
         if (mqtt_client_handle != NULL) {
+            // Check if already connected - if so, don't try to start again
+            if (mqtt_connected) {
+                ESP_LOGI(TAG, "[MQTT] Already connected, skipping start");
+                return true;
+            }
+            
+            // Check if we're already in the process of connecting
+            if (mqtt_connecting) {
+                ESP_LOGI(TAG, "[MQTT] Connection already in progress, skipping start");
+                return true;
+            }
+            
+            ESP_LOGI(TAG, "[MQTT] Attempting to connect...");
+            ESP_LOGI(TAG, "[MQTT] WiFi IP: %s", ip.c_str());
+            
+            // Mark as connecting to prevent multiple simultaneous attempts
+            mqtt_connecting = true;
+            
+            // Try to start the client
             esp_err_t err = esp_mqtt_client_start(mqtt_client_handle);
             if (err == ESP_OK) {
                 ESP_LOGI(TAG, "[MQTT] Connection initiated");
                 return true;
+            } else if (err == ESP_ERR_INVALID_STATE || err == ESP_FAIL) {
+                // Client is already started (ESP_ERR_INVALID_STATE) or in a state where
+                // start fails but it's already running (ESP_FAIL with "Client has started" message)
+                // This is not an error - the client will connect automatically
+                // Keep mqtt_connecting = true since connection is in progress
+                ESP_LOGI(TAG, "[MQTT] Client already started (err=%s), connection in progress...", esp_err_to_name(err));
+                return true;
             } else {
                 ESP_LOGE(TAG, "[MQTT] Failed to start client: %s", esp_err_to_name(err));
                 mqtt_connected = false;
+                mqtt_connecting = false;  // Reset connecting flag on error
                 return false;
             }
         } else {
             ESP_LOGE(TAG, "[MQTT] Client not initialized");
             mqtt_connected = false;
+            mqtt_connecting = false;
             return false;
         }
     #else
@@ -292,13 +322,13 @@ bool mqtt_client_init(const char* chip_id) {
             ESP_LOGI(TAG, "[MQTT] Using secrets.h server: %s", mqtt_server);
         #endif
         
-        // Use URI-based configuration (simpler and more compatible)
+        // Use URI format with mqtt:// scheme (required by ESP-IDF MQTT client)
         char uri[256];
         snprintf(uri, sizeof(uri), "mqtt://%s:%d", mqtt_server, MQTT_PORT);
+        ESP_LOGI(TAG, "[MQTT] Connecting to: %s", uri);
         
         esp_mqtt_client_config_t mqtt_cfg = {};
-        mqtt_cfg.broker.address.hostname = mqtt_server;
-        mqtt_cfg.broker.address.port = MQTT_PORT;
+        mqtt_cfg.broker.address.uri = uri;  // Use URI with scheme
         mqtt_cfg.credentials.client_id = mqtt_client_id;
         mqtt_cfg.session.keepalive = MQTT_KEEPALIVE;
         mqtt_cfg.network.reconnect_timeout_ms = MQTT_RECONNECT_DELAY;
@@ -351,7 +381,8 @@ void mqtt_client_loop() {
     #ifdef ESP_PLATFORM
         // ESP-IDF: MQTT client runs in background, no loop needed
         // But we check connection and reconnect if needed
-        if (!mqtt_client_is_connected()) {
+        // Don't try to reconnect if we're already connected or in the process of connecting
+        if (!mqtt_client_is_connected() && !mqtt_connecting) {
             unsigned long now = millis();
             if (now - last_reconnect_attempt >= MQTT_RECONNECT_DELAY) {
                 last_reconnect_attempt = now;

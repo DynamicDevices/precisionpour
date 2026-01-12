@@ -38,12 +38,22 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
         pixels = img.load()
         
         # Convert to RGB565 format
+        # RGB565 format: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
+        # Note: WiFi icon colors are correct, so display driver is fine. Logo needs G and B swapped.
+        # Swap G and B during conversion to fix blue/green reversal in logo image
+        # When swapping: RRRRR GGGGGG BBBBB -> RRRRR BBBBB GGGGGG
+        # G is 6 bits, B is 5 bits. When swapping:
+        #   B (5 bits) goes to G position (6 bits wide) - pad with 0
+        #   G (6 bits) goes to B position (5 bits wide) - truncate to 5 bits
         rgb565_data = []
         for y in range(height):
             for x in range(width):
                 r, g, b = pixels[x, y]
-                # Convert RGB888 to RGB565
-                rgb565 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
+                # Convert RGB888 to RGB565 with G and B swapped
+                # R: 5 bits in position 15-11
+                # B: 5 bits in G position (10-5, padded to 6 bits with 0)
+                # G: 6 bits truncated to 5 bits in B position (4-0)
+                rgb565 = ((r >> 3) << 11) | ((b >> 3) << 5) | ((g >> 3) & 0x1F)
                 # Store as little-endian (2 bytes)
                 rgb565_data.append(rgb565 & 0xFF)  # Low byte
                 rgb565_data.append((rgb565 >> 8) & 0xFF)  # High byte
@@ -58,6 +68,8 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
             f.write(f"#ifndef {var_name.upper()}_H\n")
             f.write(f"#define {var_name.upper()}_H\n\n")
             f.write("#include <lvgl.h>\n\n")
+            f.write("#pragma GCC diagnostic push\n")
+            f.write("#pragma GCC diagnostic ignored \"-Wmissing-field-initializers\"\n\n")
             
             # Write image data array
             f.write(f"const uint8_t {var_name}_data[] = {{\n")
@@ -79,10 +91,12 @@ def convert_to_lvgl_rgb565(input_path, output_path, var_name="precision_pour_log
             f.write("        .cf = LV_IMG_CF_TRUE_COLOR,  // RGB565 format\n")
             f.write(f"        .w = {width},\n")
             f.write(f"        .h = {height},\n")
+            f.write("        // always_zero and reserved fields are automatically zero-initialized\n")
             f.write("    },\n")
             f.write(f"    .data_size = {len(rgb565_data)},\n")
             f.write(f"    .data = {var_name}_data,\n")
             f.write("};\n\n")
+            f.write("#pragma GCC diagnostic pop\n\n")
             f.write(f"#endif // {var_name.upper()}_H\n")
         
         print(f"✓ Converted to: {output_path}")

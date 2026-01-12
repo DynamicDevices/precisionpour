@@ -67,6 +67,11 @@ static const unsigned long WIFI_RSSI_UPDATE_INTERVAL_MS = 10000;  // Update ever
 static int cached_rssi = 0;  // Cached RSSI value
 static bool cached_wifi_connected = false;  // Cached connection status
 
+// WiFi icon flashing animation (when WiFi connected but MQTT not connected)
+static unsigned long last_wifi_flash_toggle = 0;
+static const unsigned long WIFI_FLASH_INTERVAL_MS = 2500;  // 2500ms on, 2500ms off = 5 second cycle
+static bool wifi_flash_state = false;  // Current flash state (true = visible, false = hidden)
+
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
@@ -579,6 +584,7 @@ void production_mode_update() {
         }
         
         bool wifi_connected = cached_wifi_connected;
+        bool mqtt_connected = mqtt_client_is_connected();
         int rssi = cached_rssi;
         
         // Determine color: Green when connected, Red when disconnected
@@ -609,21 +615,45 @@ void production_mode_update() {
         lv_obj_set_style_bg_color(wifi_bar3, icon_color, 0);
         lv_obj_set_style_bg_color(wifi_bar4, icon_color, 0);
         
-        // Show/hide bars based on signal strength
+        // Check if WiFi is connected but MQTT is not - flash the icon
+        bool should_flash = wifi_connected && !mqtt_connected;
+        lv_opa_t base_opacity = LV_OPA_COVER;
+        
+        if (should_flash) {
+            // Toggle flash state every 2500ms (5 second cycle: 2.5s on, 2.5s off)
+            if (now - last_wifi_flash_toggle >= WIFI_FLASH_INTERVAL_MS) {
+                wifi_flash_state = !wifi_flash_state;
+                last_wifi_flash_toggle = now;
+            }
+            // Use flash state to control visibility (true = visible, false = hidden)
+            base_opacity = wifi_flash_state ? LV_OPA_COVER : LV_OPA_TRANSP;
+        } else {
+            // Reset flash state when not flashing
+            wifi_flash_state = true;
+            last_wifi_flash_toggle = 0;
+        }
+        
+        // Show/hide bars based on signal strength and flash state
         // When disconnected (bars_to_show = 0), show all bars at 40% opacity so they're still visible
         // When connected, show bars based on signal strength
         if (bars_to_show == 0) {
             // Disconnected - show all bars dimmed but visible
-            lv_obj_set_style_opa(wifi_bar1, LV_OPA_40, 0);
-            lv_obj_set_style_opa(wifi_bar2, LV_OPA_40, 0);
-            lv_obj_set_style_opa(wifi_bar3, LV_OPA_40, 0);
-            lv_obj_set_style_opa(wifi_bar4, LV_OPA_40, 0);
+            lv_opa_t disconnected_opacity = should_flash ? base_opacity : (lv_opa_t)LV_OPA_40;
+            lv_obj_set_style_opa(wifi_bar1, disconnected_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar2, disconnected_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar3, disconnected_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar4, disconnected_opacity, 0);
         } else {
-            // Connected - show bars based on signal strength
-            lv_obj_set_style_opa(wifi_bar1, (bars_to_show >= 1) ? LV_OPA_COVER : LV_OPA_20, 0);
-            lv_obj_set_style_opa(wifi_bar2, (bars_to_show >= 2) ? LV_OPA_COVER : LV_OPA_20, 0);
-            lv_obj_set_style_opa(wifi_bar3, (bars_to_show >= 3) ? LV_OPA_COVER : LV_OPA_20, 0);
-            lv_obj_set_style_opa(wifi_bar4, (bars_to_show >= 4) ? LV_OPA_COVER : LV_OPA_20, 0);
+            // Connected - show bars based on signal strength, with flash effect if needed
+            lv_opa_t bar1_opacity = (bars_to_show >= 1) ? base_opacity : (base_opacity * LV_OPA_20 / LV_OPA_COVER);
+            lv_opa_t bar2_opacity = (bars_to_show >= 2) ? base_opacity : (base_opacity * LV_OPA_20 / LV_OPA_COVER);
+            lv_opa_t bar3_opacity = (bars_to_show >= 3) ? base_opacity : (base_opacity * LV_OPA_20 / LV_OPA_COVER);
+            lv_opa_t bar4_opacity = (bars_to_show >= 4) ? base_opacity : (base_opacity * LV_OPA_20 / LV_OPA_COVER);
+            
+            lv_obj_set_style_opa(wifi_bar1, bar1_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar2, bar2_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar3, bar3_opacity, 0);
+            lv_obj_set_style_opa(wifi_bar4, bar4_opacity, 0);
         }
         
         // Force redraw
