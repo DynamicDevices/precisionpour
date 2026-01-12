@@ -250,12 +250,12 @@ void wifi_manager_start_provisioning() {
         strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
     }
     
-    // Build BLE device name: PXXX (using last 3 chars of chip ID to fit BLE advertising limit)
+    // Build BLE device name: XX (using last 2 chars of chip ID to fit BLE advertising limit)
     char ble_device_name[64] = {0};
-    // Extract last 3 characters of chip_id (e.g., "200" from "0070072D9200")
+    // Extract last 2 characters of chip_id (e.g., "00" from "0070072D9200")
     int chip_id_len = strlen(chip_id);
-    const char* chip_id_suffix = (chip_id_len >= 3) ? &chip_id[chip_id_len - 3] : chip_id;
-    snprintf(ble_device_name, sizeof(ble_device_name), "P%s", chip_id_suffix);
+    const char* chip_id_suffix = (chip_id_len >= 2) ? &chip_id[chip_id_len - 2] : chip_id;
+    snprintf(ble_device_name, sizeof(ble_device_name), "%s", chip_id_suffix);
     
     Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
     Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
@@ -278,8 +278,9 @@ void wifi_manager_start_provisioning() {
     // Use short strings to avoid exceeding BLE advertising data length (31 bytes max)
     
     // Log string lengths for debugging advertising data size
-    const char* firmware_name = "PP";
-    const char* firmware_version = "1.0";
+    // Minimized to absolute minimum to fit within 31-byte BLE advertising limit
+    const char* firmware_name = "P";      // Single character (was "PP")
+    const char* firmware_version = "1";   // Single character (was "1.0")
     Serial.printf("[Improv WiFi BLE] Advertising data sizes:\r\n");
     Serial.printf("  Firmware name: '%s' (%d bytes)\r\n", firmware_name, strlen(firmware_name));
     Serial.printf("  Firmware version: '%s' (%d bytes)\r\n", firmware_version, strlen(firmware_version));
