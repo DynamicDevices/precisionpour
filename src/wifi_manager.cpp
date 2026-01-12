@@ -250,12 +250,14 @@ void wifi_manager_start_provisioning() {
         strncpy(chip_id, wifi_mac.c_str(), sizeof(chip_id) - 1);
     }
     
-    // Build BLE device name: XX (using last 2 chars of chip ID to fit BLE advertising limit)
+    // Build BLE device name: Use empty string to avoid adding to primary advertisement
+    // The name will be in scan response instead (handled by Improv library)
+    // This saves space in the 31-byte primary advertisement packet
+    // Primary ADV breakdown: Flags (3) + 128-bit UUID (18) + Service Data (11) = 32 bytes (over limit!)
+    // So we MUST use empty device name to avoid exceeding limit
     char ble_device_name[64] = {0};
-    // Extract last 2 characters of chip_id (e.g., "00" from "0070072D9200")
-    int chip_id_len = strlen(chip_id);
-    const char* chip_id_suffix = (chip_id_len >= 2) ? &chip_id[chip_id_len - 2] : chip_id;
-    snprintf(ble_device_name, sizeof(ble_device_name), "%s", chip_id_suffix);
+    // Use empty string - name will be in scan response
+    ble_device_name[0] = '\0';
     
     Serial.printf("[Improv WiFi BLE] Chip ID: %s\r\n", chip_id);
     Serial.printf("[Improv WiFi BLE] BLE device name: %s\r\n", ble_device_name);
@@ -281,13 +283,20 @@ void wifi_manager_start_provisioning() {
     // Minimized to absolute minimum to fit within 31-byte BLE advertising limit
     const char* firmware_name = "P";      // Single character (was "PP")
     const char* firmware_version = "1";   // Single character (was "1.0")
-    Serial.printf("[Improv WiFi BLE] Advertising data sizes:\r\n");
-    Serial.printf("  Firmware name: '%s' (%d bytes)\r\n", firmware_name, strlen(firmware_name));
-    Serial.printf("  Firmware version: '%s' (%d bytes)\r\n", firmware_version, strlen(firmware_version));
-    Serial.printf("  Device name: '%s' (%d bytes)\r\n", ble_device_name, strlen(ble_device_name));
-    Serial.printf("  Total string data: %d bytes\r\n", 
-                  strlen(firmware_name) + strlen(firmware_version) + strlen(ble_device_name));
-    Serial.printf("  BLE advertising limit: 31 bytes (includes service UUIDs, flags, etc.)\r\n");
+    Serial.printf("[Improv WiFi BLE] Advertising data breakdown:\r\n");
+    Serial.printf("  Primary advertisement components:\r\n");
+    Serial.printf("    - Flags: 3 bytes (0x06)\r\n");
+    Serial.printf("    - 128-bit Service UUID: 18 bytes (Improv protocol requirement)\r\n");
+    Serial.printf("    - Service Data (0x4677 + 8-byte payload): 11 bytes\r\n");
+    Serial.printf("    Subtotal: 32 bytes (ALREADY OVER 31-byte limit!)\r\n");
+    Serial.printf("  Device info strings (used in service, not primary ADV):\r\n");
+    Serial.printf("    - Firmware name: '%s' (%d bytes)\r\n", firmware_name, strlen(firmware_name));
+    Serial.printf("    - Firmware version: '%s' (%d bytes)\r\n", firmware_version, strlen(firmware_version));
+    Serial.printf("    - Device name: '%s' (%d bytes) - will be in scan response\r\n", 
+                  ble_device_name[0] ? ble_device_name : "(empty)", 
+                  strlen(ble_device_name));
+    Serial.printf("  NOTE: Device name set to empty to avoid adding to primary ADV\r\n");
+    Serial.printf("        Name will appear in scan response instead (separate packet)\r\n");
     
     improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
