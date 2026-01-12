@@ -78,7 +78,7 @@
 #define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
 
 // WiFi Provisioning Configuration
-#define USE_IMPROV_WIFI 1  // Set to 1 to enable Improv WiFi BLE provisioning, 0 to disable
+#define USE_IMPROV_WIFI 0  // Set to 1 to enable Improv WiFi BLE provisioning, 0 to disable
 #define IMPROV_WIFI_TIMEOUT_MS 300000  // 5 minutes timeout for Improv WiFi provisioning (then restart)
 #define USE_SAVED_CREDENTIALS 1  // Set to 1 to use saved credentials from EEPROM, 0 to always use secrets.h
 
