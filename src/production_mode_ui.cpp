@@ -35,9 +35,9 @@ static lv_obj_t *wifi_bar2 = NULL;  // WiFi signal bar 2
 static lv_obj_t *wifi_bar3 = NULL;  // WiFi signal bar 3
 static lv_obj_t *wifi_bar4 = NULL;  // WiFi signal bar 4 (tallest)
 static lv_obj_t *improv_icon_container = NULL;  // Improv/BLE provisioning icon container
-static lv_obj_t *improv_icon_circle = NULL;  // Pulsing circle for Improv mode
-static lv_obj_t *improv_icon_bt1 = NULL;  // Bluetooth icon part 1
-static lv_obj_t *improv_icon_bt2 = NULL;  // Bluetooth icon part 2
+static lv_obj_t *improv_icon_bt_top = NULL;     // Bluetooth icon top arc
+static lv_obj_t *improv_icon_bt_bottom = NULL;  // Bluetooth icon bottom arc
+static lv_obj_t *improv_icon_bt_center = NULL;  // Bluetooth icon center line
 static lv_obj_t *comm_status_container = NULL;  // Communication activity icon container
 static lv_obj_t *comm_spark1 = NULL;  // Spark/pulse element 1
 static lv_obj_t *comm_spark2 = NULL;  // Spark/pulse element 2
@@ -295,49 +295,52 @@ void production_mode_init() {
         Serial.println("[Production UI] WiFi status icon created");
     }
     
-    // Create Improv/BLE provisioning icon (initially hidden)
+    // Create Improv/BLE provisioning icon (standard Bluetooth icon)
     Serial.println("[Production UI] Creating Improv provisioning icon...");
     improv_icon_container = lv_obj_create(lv_scr_act());
     if (improv_icon_container != NULL) {
-        // Container for Improv icon (24x20 pixels, same size as WiFi icon)
-        lv_obj_set_size(improv_icon_container, 24, 20);
+        // Container for Improv icon (20x20 pixels for Bluetooth icon)
+        lv_obj_set_size(improv_icon_container, 20, 20);
         lv_obj_align(improv_icon_container, LV_ALIGN_BOTTOM_LEFT, 5, -5);
         lv_obj_set_style_bg_opa(improv_icon_container, LV_OPA_TRANSP, 0);  // Transparent background
         lv_obj_set_style_border_width(improv_icon_container, 0, 0);
         lv_obj_set_style_pad_all(improv_icon_container, 0, 0);
         lv_obj_clear_flag(improv_icon_container, LV_OBJ_FLAG_SCROLLABLE);
         
-        // Create pulsing circle background (blue/cyan color)
-        improv_icon_circle = lv_obj_create(improv_icon_container);
-        lv_obj_set_size(improv_icon_circle, 16, 16);
-        lv_obj_align(improv_icon_circle, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_set_style_bg_opa(improv_icon_circle, LV_OPA_60, 0);
-        lv_obj_set_style_bg_color(improv_icon_circle, lv_color_hex(0x0080FF), 0);  // Blue
-        lv_obj_set_style_border_width(improv_icon_circle, 0, 0);
-        lv_obj_set_style_radius(improv_icon_circle, LV_RADIUS_CIRCLE, 0);
+        // Standard Bluetooth icon: Simplified "B" shape using geometric shapes
+        // Top triangle/arc (top-left to center)
+        improv_icon_bt_top = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_bt_top, 6, 8);
+        lv_obj_align(improv_icon_bt_top, LV_ALIGN_TOP_LEFT, 3, 1);
+        lv_obj_set_style_bg_opa(improv_icon_bt_top, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(improv_icon_bt_top, 2, 0);
+        lv_obj_set_style_border_color(improv_icon_bt_top, lv_color_hex(0x0080FF), 0);  // Blue
+        lv_obj_set_style_border_side(improv_icon_bt_top, LV_BORDER_SIDE_LEFT | LV_BORDER_SIDE_TOP, 0);
+        lv_obj_set_style_radius(improv_icon_bt_top, 3, 0);
         
-        // Create Bluetooth icon - part 1 (left arc)
-        improv_icon_bt1 = lv_obj_create(improv_icon_container);
-        lv_obj_set_size(improv_icon_bt1, 2, 8);
-        lv_obj_align(improv_icon_bt1, LV_ALIGN_CENTER, -4, -2);
-        lv_obj_set_style_bg_opa(improv_icon_bt1, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(improv_icon_bt1, lv_color_hex(0xFFFFFF), 0);  // White
-        lv_obj_set_style_border_width(improv_icon_bt1, 0, 0);
-        lv_obj_set_style_radius(improv_icon_bt1, 1, 0);
+        // Bottom triangle/arc (center to bottom-right)
+        improv_icon_bt_bottom = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_bt_bottom, 6, 8);
+        lv_obj_align(improv_icon_bt_bottom, LV_ALIGN_BOTTOM_LEFT, 3, -1);
+        lv_obj_set_style_bg_opa(improv_icon_bt_bottom, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(improv_icon_bt_bottom, 2, 0);
+        lv_obj_set_style_border_color(improv_icon_bt_bottom, lv_color_hex(0x0080FF), 0);  // Blue
+        lv_obj_set_style_border_side(improv_icon_bt_bottom, LV_BORDER_SIDE_LEFT | LV_BORDER_SIDE_BOTTOM, 0);
+        lv_obj_set_style_radius(improv_icon_bt_bottom, 3, 0);
         
-        // Create Bluetooth icon - part 2 (right arc)
-        improv_icon_bt2 = lv_obj_create(improv_icon_container);
-        lv_obj_set_size(improv_icon_bt2, 2, 8);
-        lv_obj_align(improv_icon_bt2, LV_ALIGN_CENTER, 4, 2);
-        lv_obj_set_style_bg_opa(improv_icon_bt2, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(improv_icon_bt2, lv_color_hex(0xFFFFFF), 0);  // White
-        lv_obj_set_style_border_width(improv_icon_bt2, 0, 0);
-        lv_obj_set_style_radius(improv_icon_bt2, 1, 0);
+        // Center vertical line connecting the arcs
+        improv_icon_bt_center = lv_obj_create(improv_icon_container);
+        lv_obj_set_size(improv_icon_bt_center, 2, 10);
+        lv_obj_align(improv_icon_bt_center, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_bg_opa(improv_icon_bt_center, LV_OPA_COVER, 0);
+        lv_obj_set_style_bg_color(improv_icon_bt_center, lv_color_hex(0x0080FF), 0);  // Blue
+        lv_obj_set_style_border_width(improv_icon_bt_center, 0, 0);
+        lv_obj_set_style_radius(improv_icon_bt_center, 1, 0);
         
         // Initially hide the Improv icon (show WiFi icon by default)
         lv_obj_add_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
         
-        Serial.println("[Production UI] Improv provisioning icon created");
+        Serial.println("[Production UI] Improv provisioning icon created (Bluetooth icon)");
     }
     lv_timer_handler();
     
@@ -408,12 +411,20 @@ void production_mode_update() {
             if (improv_icon_container != NULL) {
                 lv_obj_clear_flag(improv_icon_container, LV_OBJ_FLAG_HIDDEN);
                 
-                // Animate the pulsing circle (simple opacity animation)
+                // Animate the Bluetooth icon (simple opacity pulse)
                 unsigned long now = millis();
-                uint8_t pulse_opacity = 40 + (sin(now / 200.0) + 1.0) * 30;  // Pulse between 40-100% opacity
-                if (improv_icon_circle != NULL) {
-                    lv_obj_set_style_opa(improv_icon_circle, pulse_opacity, 0);
-                    lv_obj_invalidate(improv_icon_circle);
+                uint8_t pulse_opacity = 60 + (sin(now / 200.0) + 1.0) * 40;  // Pulse between 60-100% opacity
+                if (improv_icon_bt_top != NULL) {
+                    lv_obj_set_style_opa(improv_icon_bt_top, pulse_opacity, 0);
+                    lv_obj_invalidate(improv_icon_bt_top);
+                }
+                if (improv_icon_bt_bottom != NULL) {
+                    lv_obj_set_style_opa(improv_icon_bt_bottom, pulse_opacity, 0);
+                    lv_obj_invalidate(improv_icon_bt_bottom);
+                }
+                if (improv_icon_bt_center != NULL) {
+                    lv_obj_set_style_opa(improv_icon_bt_center, pulse_opacity, 0);
+                    lv_obj_invalidate(improv_icon_bt_center);
                 }
             }
         } else {
