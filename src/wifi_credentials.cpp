@@ -1,0 +1,151 @@
+/**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * WiFi Credentials Storage Implementation
+ * 
+ * Handles saving and loading WiFi credentials from NVS (ESP-IDF) or Preferences (Arduino)
+ */
+
+#include "config.h"
+#include "wifi_credentials.h"
+
+// System/Standard library headers
+#ifdef ESP_PLATFORM
+    #include <esp_log.h>
+    #include <nvs.h>
+    #include <nvs_flash.h>
+    #include <cstring>
+    #define TAG "wifi_creds"
+    
+    // Project compatibility headers
+    #include "esp_idf_compat.h"
+    
+    static nvs_handle_t wifi_nvs_handle = 0;
+#else
+    #include <Arduino.h>
+    #include <Preferences.h>
+    static Preferences preferences;
+#endif
+
+// EEPROM/Preferences keys for storing WiFi credentials
+#define PREF_NAMESPACE "wifi"
+#define PREF_KEY_SSID "ssid"
+#define PREF_KEY_PASSWORD "password"
+#define PREF_KEY_USE_SAVED "use_saved"
+
+/**
+ * Load saved WiFi credentials from NVS/Preferences
+ */
+bool wifi_credentials_load(String& ssid, String& password) {
+    if (!USE_SAVED_CREDENTIALS) {
+        return false;
+    }
+    
+    #ifdef ESP_PLATFORM
+        // ESP-IDF: Use NVS
+        esp_err_t err = nvs_open(PREF_NAMESPACE, NVS_READONLY, &wifi_nvs_handle);
+        if (err != ESP_OK) {
+            return false;  // Namespace doesn't exist yet
+        }
+        
+        bool use_saved = false;
+        size_t required_size = sizeof(bool);
+        err = nvs_get_blob(wifi_nvs_handle, PREF_KEY_USE_SAVED, &use_saved, &required_size);
+        if (err != ESP_OK || !use_saved) {
+            nvs_close(wifi_nvs_handle);
+            return false;
+        }
+        
+        // Read SSID
+        required_size = 64;
+        char ssid_buf[64] = {0};
+        err = nvs_get_str(wifi_nvs_handle, PREF_KEY_SSID, ssid_buf, &required_size);
+        if (err == ESP_OK && strlen(ssid_buf) > 0) {
+            ssid = String(ssid_buf);
+            
+            // Read password
+            required_size = 64;
+            char password_buf[64] = {0};
+            err = nvs_get_str(wifi_nvs_handle, PREF_KEY_PASSWORD, password_buf, &required_size);
+            if (err == ESP_OK) {
+                password = String(password_buf);
+            }
+            
+            nvs_close(wifi_nvs_handle);
+            ESP_LOGI(TAG, "[WiFi] Loaded saved credentials for: %s", ssid.c_str());
+            return true;
+        }
+        
+        nvs_close(wifi_nvs_handle);
+        return false;
+    #else
+        // Arduino: Use Preferences
+        if (!preferences.begin(PREF_NAMESPACE, true)) {
+            return false;
+        }
+        
+        bool use_saved = preferences.getBool(PREF_KEY_USE_SAVED, false);
+        
+        if (use_saved) {
+            ssid = preferences.getString(PREF_KEY_SSID, "");
+            password = preferences.getString(PREF_KEY_PASSWORD, "");
+            preferences.end();
+            
+            if (ssid.length() > 0) {
+                Serial.printf("[WiFi] Loaded saved credentials for: %s\r\n", ssid.c_str());
+                return true;
+            }
+        }
+        
+        preferences.end();
+        return false;
+    #endif
+}
+
+/**
+ * Save WiFi credentials to NVS/Preferences
+ */
+void wifi_credentials_save(const String& ssid, const String& password) {
+    #ifdef ESP_PLATFORM
+        // ESP-IDF: Use NVS
+        esp_err_t err = nvs_open(PREF_NAMESPACE, NVS_READWRITE, &wifi_nvs_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "[WiFi] ERROR: Failed to open NVS namespace for writing");
+            return;
+        }
+        
+        err = nvs_set_str(wifi_nvs_handle, PREF_KEY_SSID, ssid.c_str());
+        if (err == ESP_OK) {
+            err = nvs_set_str(wifi_nvs_handle, PREF_KEY_PASSWORD, password.c_str());
+        }
+        if (err == ESP_OK) {
+            bool use_saved = true;
+            err = nvs_set_blob(wifi_nvs_handle, PREF_KEY_USE_SAVED, &use_saved, sizeof(bool));
+        }
+        if (err == ESP_OK) {
+            err = nvs_commit(wifi_nvs_handle);
+        }
+        
+        nvs_close(wifi_nvs_handle);
+        
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "[WiFi] Saved credentials for: %s", ssid.c_str());
+        } else {
+            ESP_LOGE(TAG, "[WiFi] Failed to save credentials: %s", esp_err_to_name(err));
+        }
+    #else
+        // Arduino: Use Preferences
+        if (!preferences.begin(PREF_NAMESPACE, false)) {
+            Serial.println("[WiFi] ERROR: Failed to open Preferences namespace for writing");
+            return;
+        }
+        
+        preferences.putString(PREF_KEY_SSID, ssid);
+        preferences.putString(PREF_KEY_PASSWORD, password);
+        preferences.putBool(PREF_KEY_USE_SAVED, true);
+        preferences.end();
+        
+        Serial.printf("[WiFi] Saved credentials for: %s\r\n", ssid.c_str());
+    #endif
+}
