@@ -197,6 +197,7 @@ menu "PrecisionPour Configuration"
 
             config TEST_MODE
                 bool "Test Mode"
+                default y
                 help
                     Hardware testing interface for development and debugging
         endchoice
