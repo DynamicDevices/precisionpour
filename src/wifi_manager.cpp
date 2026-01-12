@@ -317,7 +317,7 @@ void wifi_manager_loop() {
         }
         
         if (millis() - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
-            Serial.println("[Improv WiFi BLE] Provisioning timeout - stopping BLE");
+            Serial.println("[Improv WiFi BLE] Provisioning timeout (60s) - restarting device");
             improv_provisioning_active = false;
             provisioning_start = 0;
             
@@ -328,17 +328,9 @@ void wifi_manager_loop() {
                 delay(200);  // Give BLE time to fully shut down
             }
             
-            // Re-enable WiFi before attempting connection
-            WiFi.mode(WIFI_STA);
-            delay(100);
-            
-            // Try to reconnect with saved/hardcoded credentials
-            String ssid, password;
-            if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
-                connect_to_wifi(ssid, password);
-            } else {
-                connect_to_wifi(String(WIFI_SSID), String(WIFI_PASSWORD));
-            }
+            Serial.println("[Improv WiFi BLE] Restarting device after timeout...");
+            delay(1000);  // Give time for serial output to flush
+            ESP.restart();  // Restart the device after timeout
         }
         
         // If WiFi connected, stop provisioning and re-enable WiFi
