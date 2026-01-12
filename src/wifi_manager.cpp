@@ -277,8 +277,8 @@ void wifi_manager_start_provisioning() {
     improvWiFiBLE.setDeviceInfo(
         ImprovTypes::ChipFamily::CF_ESP32,
         "PP",     // Firmware name (shortened to avoid advertising length issues)
-        "1.0.0",  // Firmware version
-        ble_device_name  // Device name (P-XXX)
+        "1.0",    // Firmware version (shortened from 1.0.0)
+        ble_device_name  // Device name (PXXX - last 3 chars of chip ID)
     );
     
     // Set callbacks
