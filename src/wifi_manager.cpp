@@ -90,7 +90,13 @@ static bool load_saved_credentials(String& ssid, String& password) {
         return false;
     }
     
-    preferences.begin(PREF_NAMESPACE, true);  // Read-only mode
+    // Try to open Preferences namespace (read-only)
+    // If namespace doesn't exist (NOT_FOUND), that's okay - just means no saved credentials yet
+    if (!preferences.begin(PREF_NAMESPACE, true)) {  // Read-only mode
+        // Namespace doesn't exist yet - this is normal on first boot
+        return false;
+    }
+    
     bool use_saved = preferences.getBool(PREF_KEY_USE_SAVED, false);
     
     if (use_saved) {
@@ -112,7 +118,13 @@ static bool load_saved_credentials(String& ssid, String& password) {
  * Save WiFi credentials to EEPROM/Preferences
  */
 static void save_credentials(const String& ssid, const String& password) {
-    preferences.begin(PREF_NAMESPACE, false);  // Read-write mode
+    // Open Preferences namespace (read-write mode)
+    // This will create the namespace if it doesn't exist
+    if (!preferences.begin(PREF_NAMESPACE, false)) {  // Read-write mode
+        Serial.println("[WiFi] ERROR: Failed to open Preferences namespace for writing");
+        return;
+    }
+    
     preferences.putString(PREF_KEY_SSID, ssid);
     preferences.putString(PREF_KEY_PASSWORD, password);
     preferences.putBool(PREF_KEY_USE_SAVED, true);
@@ -125,7 +137,13 @@ static void save_credentials(const String& ssid, const String& password) {
  * Clear saved WiFi credentials
  */
 static void clear_saved_credentials() {
-    preferences.begin(PREF_NAMESPACE, false);
+    // Try to open Preferences namespace (read-write mode)
+    // If namespace doesn't exist, there's nothing to clear
+    if (!preferences.begin(PREF_NAMESPACE, false)) {
+        // Namespace doesn't exist - nothing to clear
+        return;
+    }
+    
     preferences.remove(PREF_KEY_SSID);
     preferences.remove(PREF_KEY_PASSWORD);
     preferences.putBool(PREF_KEY_USE_SAVED, false);
