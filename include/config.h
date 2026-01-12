@@ -22,13 +22,18 @@
 // Check if we're using ESP-IDF with KConfig
 // ESP-IDF always defines ESP_PLATFORM
 #ifdef ESP_PLATFORM
-    // ESP-IDF framework - try to include sdkconfig.h
+    // ESP-IDF framework - include sdkconfig.h
+    // sdkconfig.h is generated during build in the build directory
+    // PlatformIO automatically adds build/include to include path
     #ifdef __has_include
         #if __has_include("sdkconfig.h")
             #include "sdkconfig.h"
+        #elif __has_include("build/include/sdkconfig.h")
+            #include "build/include/sdkconfig.h"
         #endif
     #else
         // Fallback: try to include sdkconfig.h directly
+        // ESP-IDF build system should have this in the include path
         #include "sdkconfig.h"
     #endif
 #endif
@@ -67,11 +72,21 @@
     
     #define TEST_MODE CONFIG_TEST_MODE_ENABLED
     
+    // WiFi Configuration
+    // KConfig values: CONFIG_WIFI_SSID and CONFIG_WIFI_PASSWORD (from sdkconfig.h)
+    // secrets.h will also define WIFI_SSID and WIFI_PASSWORD as fallback
+    // Code will check CONFIG_WIFI_SSID at runtime to decide which to use
+    // Note: CONFIG_WIFI_SSID is a string config from KConfig, available via sdkconfig.h
     #define WIFI_RECONNECT_DELAY CONFIG_WIFI_RECONNECT_DELAY
     #define USE_IMPROV_WIFI CONFIG_USE_IMPROV_WIFI
     #define IMPROV_WIFI_TIMEOUT_MS CONFIG_IMPROV_WIFI_TIMEOUT_MS
     #define USE_SAVED_CREDENTIALS CONFIG_USE_SAVED_CREDENTIALS
     
+    // MQTT Configuration
+    // KConfig values are available as CONFIG_MQTT_SERVER from sdkconfig.h
+    // secrets.h will also define MQTT_SERVER as fallback
+    // Code will check CONFIG_MQTT_SERVER at runtime to decide which to use
+    #define MQTT_SERVER_KCONFIG CONFIG_MQTT_SERVER
     #define MQTT_PORT CONFIG_MQTT_PORT
     #define MQTT_CLIENT_ID_PREFIX CONFIG_MQTT_CLIENT_ID_PREFIX
     #define MQTT_TOPIC_PREFIX CONFIG_MQTT_TOPIC_PREFIX
@@ -181,7 +196,17 @@
 
 // Include secrets (WiFi and MQTT credentials)
 // secrets.h is gitignored - copy secrets.h.example to secrets.h and fill in your credentials
+// For ESP-IDF: KConfig values take priority, secrets.h is fallback if KConfig values are empty
+// For Arduino: secrets.h is always used
+// Always include secrets.h (for MQTT_SERVER and as fallback for WiFi if KConfig is empty)
 #include "secrets.h"
+
+// For ESP-IDF: Override with KConfig values if they are non-empty
+#ifdef ESP_PLATFORM
+    // KConfig values are already defined above, but if they're empty strings,
+    // the secrets.h values will be used (they're defined after this include)
+    // The code will check strlen() at runtime to determine which to use
+#endif
 
 // Available pins from hardware documentation:
 // MicroSD Card (if needed):

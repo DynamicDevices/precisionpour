@@ -208,6 +208,22 @@ menu "PrecisionPour Configuration"
     endmenu
 
     menu "WiFi Configuration"
+        config WIFI_SSID
+            string "WiFi SSID"
+            default "VM0184406-2G"
+            help
+                WiFi network SSID (Service Set Identifier)
+                Leave empty to use secrets.h or Improv WiFi provisioning
+                Priority: KConfig > secrets.h > Improv WiFi
+
+        config WIFI_PASSWORD
+            string "WiFi Password"
+            default "2sqmsfFGqpry"
+            help
+                WiFi network password
+                Leave empty to use secrets.h or Improv WiFi provisioning
+                Priority: KConfig > secrets.h > Improv WiFi
+
         config WIFI_RECONNECT_DELAY
             int "WiFi Reconnect Delay (ms)"
             range 1000 60000
@@ -220,11 +236,13 @@ menu "PrecisionPour Configuration"
             default WIFI_SECRETS_H
             help
                 Select how WiFi credentials are configured
+                Priority: KConfig > secrets.h > Improv WiFi
 
             config WIFI_SECRETS_H
-                bool "Use secrets.h file"
+                bool "Use secrets.h file (fallback)"
                 help
-                    WiFi credentials from include/secrets.h file
+                    Use WiFi credentials from include/secrets.h file as fallback
+                    if KConfig values are empty
 
             config WIFI_IMPROV_BLE
                 bool "Use Improv WiFi BLE Provisioning"
@@ -253,6 +271,13 @@ menu "PrecisionPour Configuration"
     endmenu
 
     menu "MQTT Configuration"
+        config MQTT_SERVER
+            string "MQTT Server"
+            default "mqtt.dynamicdevices.co.uk"
+            help
+                MQTT broker server address (hostname or IP)
+                Leave empty to use secrets.h
+
         config MQTT_PORT
             int "MQTT Port"
             range 1 65535

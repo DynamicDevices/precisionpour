@@ -1,7 +1,20 @@
 #!/bin/bash
+#
+# Copyright (c) 2026 Dynamic Devices Ltd
+# All rights reserved.
+#
 # Script to completely prevent brltty from claiming CH341 USB-to-serial devices
+# This fixes ESP32 disconnection issues caused by brltty interference
+#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+UNBIND_SCRIPT="${SCRIPT_DIR}/unbind_brltty.sh"
 
 echo "=== Preventing brltty from claiming CH341 devices ==="
+echo ""
 
 # 1. Stop and disable brltty
 echo "1. Stopping and disabling brltty..."
@@ -19,7 +32,7 @@ sudo modprobe -r brltty 2>/dev/null || echo "   brltty module not loaded"
 
 # 4. Create unbind script
 echo "4. Creating unbind script..."
-sudo tee /home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh > /dev/null << 'EOFSCRIPT'
+sudo tee "${UNBIND_SCRIPT}" > /dev/null << 'EOFSCRIPT'
 #!/bin/bash
 # Script to unbind CH341 device from brltty
 pkill -9 brltty 2>/dev/null || true
@@ -42,10 +55,11 @@ for dev in /sys/bus/usb/devices/*/idVendor; do
     fi
 done
 EOFSCRIPT
-sudo chmod +x /home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh
+sudo chmod +x "${UNBIND_SCRIPT}"
 
-# 5. Create udev rule to prevent brltty from claiming CH341 devices
+# 5. Create udev rules to prevent brltty from claiming CH341 devices
 echo "5. Creating udev rules..."
+
 # Rule 1: Prevent brltty from claiming
 sudo tee /etc/udev/rules.d/99-prevent-brltty-ch341.rules > /dev/null << 'EOF'
 # Prevent brltty from claiming CH341 USB-to-serial devices
@@ -54,12 +68,12 @@ KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ENV{BRLTTY
 EOF
 
 # Rule 2: Aggressively unbind from brltty
-sudo tee /etc/udev/rules.d/98-unbind-brltty-ch341.rules > /dev/null << 'EOFRULE'
-ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", RUN+="/bin/sh -c '/home/ajlennon/data_drive/dd/precisionpour/unbind_brltty.sh'"
+sudo tee /etc/udev/rules.d/98-unbind-brltty-ch341.rules > /dev/null << EOFRULE
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", RUN+="/bin/sh -c '${UNBIND_SCRIPT}'"
 EOFRULE
 
-# 5. Reload udev rules
-echo "5. Reloading udev rules..."
+# 6. Reload udev rules
+echo "6. Reloading udev rules..."
 sudo udevadm control --reload-rules
 sudo udevadm trigger
 

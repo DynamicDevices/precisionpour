@@ -277,12 +277,27 @@ bool mqtt_client_init(const char* chip_id) {
     
     #ifdef ESP_PLATFORM
         // ESP-IDF: Configure and create MQTT client
+        // Check for KConfig value first, fallback to secrets.h
+        const char* mqtt_server = NULL;
+        #ifdef CONFIG_MQTT_SERVER
+            if (strlen(CONFIG_MQTT_SERVER) > 0) {
+                mqtt_server = CONFIG_MQTT_SERVER;
+                ESP_LOGI(TAG, "[MQTT] Using KConfig server: %s", mqtt_server);
+            } else {
+                mqtt_server = MQTT_SERVER;  // Fallback to secrets.h
+                ESP_LOGI(TAG, "[MQTT] KConfig server empty, using secrets.h: %s", mqtt_server);
+            }
+        #else
+            mqtt_server = MQTT_SERVER;  // Fallback to secrets.h
+            ESP_LOGI(TAG, "[MQTT] Using secrets.h server: %s", mqtt_server);
+        #endif
+        
         // Use URI-based configuration (simpler and more compatible)
         char uri[256];
-        snprintf(uri, sizeof(uri), "mqtt://%s:%d", MQTT_SERVER, MQTT_PORT);
+        snprintf(uri, sizeof(uri), "mqtt://%s:%d", mqtt_server, MQTT_PORT);
         
         esp_mqtt_client_config_t mqtt_cfg = {};
-        mqtt_cfg.broker.address.hostname = MQTT_SERVER;
+        mqtt_cfg.broker.address.hostname = mqtt_server;
         mqtt_cfg.broker.address.port = MQTT_PORT;
         mqtt_cfg.credentials.client_id = mqtt_client_id;
         mqtt_cfg.session.keepalive = MQTT_KEEPALIVE;

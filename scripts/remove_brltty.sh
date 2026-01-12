@@ -1,7 +1,16 @@
 #!/bin/bash
-# Script to completely remove brltty
+#
+# Copyright (c) 2026 Dynamic Devices Ltd
+# All rights reserved.
+#
+# Script to completely remove brltty from the system
+# This is a more aggressive approach than fix_brltty.sh
+#
+
+set -euo pipefail
 
 echo "=== Removing brltty completely ==="
+echo ""
 
 # 1. Kill all brltty processes
 echo "1. Killing brltty processes..."
@@ -16,7 +25,15 @@ sudo systemctl mask brltty 2>/dev/null || true
 
 # 3. Remove brltty package
 echo "3. Removing brltty package..."
-sudo apt-get remove --purge -y brltty
+if command -v apt-get &> /dev/null; then
+    sudo apt-get remove --purge -y brltty
+elif command -v yum &> /dev/null; then
+    sudo yum remove -y brltty
+elif command -v dnf &> /dev/null; then
+    sudo dnf remove -y brltty
+else
+    echo "   Warning: Package manager not found. Please remove brltty manually."
+fi
 
 # 4. Blacklist brltty module
 echo "4. Blacklisting brltty module..."

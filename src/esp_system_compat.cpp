@@ -9,7 +9,9 @@
 #include "esp_system_compat.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
+#include "esp_efuse.h"
 #include "sdkconfig.h"
+#include <string.h>
 
 const char* ESPClass::getChipModel() {
     esp_chip_info_t chip_info;
@@ -71,5 +73,59 @@ void ESPClass::restart() {
 
 // Define the ESP object
 ESPClass ESP;
+
+// Get SOC UID (unique chip identifier from flash chip)
+bool get_soc_uid_string(char* uid_string, size_t uid_string_size) {
+    if (uid_string == NULL || uid_string_size < 17) {
+        return false;  // Need at least 17 bytes (16 hex chars + null for 64-bit UID)
+    }
+    
+    // ESP32 flash chip unique ID is 64 bits (8 bytes)
+    uint64_t chip_id = 0;
+    esp_err_t ret = esp_flash_read_unique_chip_id(NULL, &chip_id);
+    
+    if (ret == ESP_OK && chip_id != 0) {
+        // Format as hex string (16 hex characters for 64-bit)
+        snprintf(uid_string, uid_string_size, "%016llX", (unsigned long long)chip_id);
+        return true;
+    }
+    
+    // Fallback to MAC address if SOC UID read fails
+    uint8_t mac[6];
+    ret = esp_efuse_mac_get_default(mac);
+    if (ret == ESP_OK) {
+        snprintf(uid_string, uid_string_size, "%02X%02X%02X%02X%02X%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return true;
+    }
+    
+    return false;
+}
+
+#else
+// Arduino framework
+#include "esp_system_compat.h"
+#include <Arduino.h>
+#include <esp_efuse.h>
+#include <string.h>
+
+// Get SOC UID (for Arduino, use MAC address as unique identifier)
+bool get_soc_uid_string(char* uid_string, size_t uid_string_size) {
+    if (uid_string == NULL || uid_string_size < 13) {
+        return false;  // Need at least 13 bytes (12 hex chars + null)
+    }
+    
+    // Arduino: Use MAC address as unique identifier
+    uint8_t mac[6];
+    esp_err_t ret = esp_efuse_mac_get_default(mac);
+    
+    if (ret == ESP_OK) {
+        snprintf(uid_string, uid_string_size, "%02X%02X%02X%02X%02X%02X",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return true;
+    }
+    
+    return false;
+}
 
 #endif // ESP_PLATFORM

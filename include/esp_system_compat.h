@@ -29,6 +29,16 @@ public:
 
 extern ESPClass ESP;
 
+// Helper function to get SOC UID (unique chip identifier)
+// Returns true on success, false on failure
+// uid_string must be at least 33 bytes (32 hex chars + null terminator)
+#ifdef ESP_PLATFORM
+bool get_soc_uid_string(char* uid_string, size_t uid_string_size);
+#else
+// Arduino: Use MAC address as fallback
+bool get_soc_uid_string(char* uid_string, size_t uid_string_size);
+#endif
+
 #else
 // Arduino framework - ESP object already exists
 #endif

@@ -19,6 +19,7 @@ __pycache__/
 *.bin
 *.hex
 *.map
+compile_commands.json
 
 # IDE
 .idea/
@@ -39,3 +40,8 @@ Thumbs.db
 
 # Secrets file (contains WiFi and MQTT credentials)
 include/secrets.h
+
+# ESP-IDF KConfig files (contains WiFi SSID/password and other sensitive config)
+sdkconfig
+sdkconfig.*
+*.sdkconfig

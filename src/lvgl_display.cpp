@@ -53,9 +53,12 @@
         gpio_set_level((gpio_num_t)TFT_DC, 0);  // Command mode
         spi_transaction_t t = {};
         t.length = 8;
-        t.tx_buffer = &cmd;
         t.flags = SPI_TRANS_USE_TXDATA;
-        spi_device_transmit(spi_handle, &t);
+        t.tx_data[0] = cmd;
+        esp_err_t ret = spi_device_transmit(spi_handle, &t);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "SPI command transmit error: %s", esp_err_to_name(ret));
+        }
     }
     
     // Helper function to send data
@@ -63,12 +66,16 @@
         gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
         spi_transaction_t t = {};
         t.length = len * 8;
-        t.tx_buffer = data;
         if (len <= 4) {
             t.flags = SPI_TRANS_USE_TXDATA;
             memcpy(t.tx_data, data, len);
+        } else {
+            t.tx_buffer = data;
         }
-        spi_device_transmit(spi_handle, &t);
+        esp_err_t ret = spi_device_transmit(spi_handle, &t);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "SPI data transmit error: %s", esp_err_to_name(ret));
+        }
     }
     
     // Helper function to send command with data
@@ -132,15 +139,22 @@
         ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &dev_cfg, &spi_handle));
         
         // Configure control pins
+        gpio_set_direction((gpio_num_t)TFT_CS, GPIO_MODE_OUTPUT);
         gpio_set_direction((gpio_num_t)TFT_DC, GPIO_MODE_OUTPUT);
         gpio_set_direction((gpio_num_t)TFT_RST, GPIO_MODE_OUTPUT);
         gpio_set_direction((gpio_num_t)TFT_BL, GPIO_MODE_OUTPUT);
+        
+        // Initialize CS pin (HIGH = inactive, SPI driver will control it during transactions)
+        gpio_set_level((gpio_num_t)TFT_CS, 1);
+        
+        // Initialize DC pin
+        gpio_set_level((gpio_num_t)TFT_DC, 0);
         
         // Reset display
         gpio_set_level((gpio_num_t)TFT_RST, 0);
         delay(10);
         gpio_set_level((gpio_num_t)TFT_RST, 1);
-        delay(10);
+        delay(120);  // Wait for display to stabilize after reset
         
         // Initialize ILI9341 with complete sequence
         ili9341_send_cmd(ILI9341_SWRESET);
@@ -162,14 +176,31 @@
         uint8_t vcom2_data[] = {0xC0};
         ili9341_send_cmd_data(ILI9341_VMCTL2, vcom2_data, 1);
         
-        // Memory Access Control (MADCTL) - rotation
+        // Memory Access Control (MADCTL) - rotation and color order
+        // ILI9341 MADCTL bits:
+        // Bit 0 (0x01): MY (row address order)
+        // Bit 1 (0x02): MX (column address order)
+        // Bit 2 (0x04): MV (row/column exchange)
+        // Bit 3 (0x08): ML (vertical refresh order)
+        // Bit 4 (0x10): BGR (0=RGB, 1=BGR) - we use BGR (1) to match LVGL RGB565 output
+        // Bit 5 (0x20): MH (horizontal refresh order)
+        // Bit 6 (0x40): Reserved
+        // Bit 7 (0x80): Reserved
+        // 
+        // Note: ILI9341 interprets data differently - when BGR=1, it expects BGR order
+        // but LVGL outputs RGB565 in RGB order, so we need BGR=1 to swap the color channels
+        // For landscape (rotation 1): MX=1, MH=1, BGR=1 (BGR mode)
+        // For portrait (rotation 0/2): MV=1, BGR=1 (BGR mode)
         uint8_t madctl = 0x00;
         if (DISPLAY_ROTATION == 1) {
-            madctl = 0x20 | 0x08;  // Landscape, BGR
+            // Landscape: MX=1, MH=1, BGR mode (BGR=1)
+            madctl = 0x20 | 0x02 | 0x10;  // MH=1, MX=1, BGR=1
         } else if (DISPLAY_ROTATION == 3) {
-            madctl = 0x20 | 0x08 | 0x40 | 0x80;  // Landscape flipped, BGR
+            // Landscape flipped: MY=1, MX=1, MV=1, MH=1, BGR mode
+            madctl = 0x80 | 0x20 | 0x02 | 0x01 | 0x10;  // MY, MH, MX, MV, BGR=1
         } else {
-            madctl = 0x08;  // Portrait, BGR
+            // Portrait: MV=1, BGR mode
+            madctl = 0x04 | 0x10;  // MV=1, BGR=1
         }
         ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
         
@@ -184,6 +215,16 @@
         // Display Function Control
         uint8_t dfunc_data[] = {0x08, 0x82, 0x27};
         ili9341_send_cmd_data(ILI9341_DFUNCTR, dfunc_data, 3);
+        
+        // Gamma correction (positive)
+        uint8_t gamma_p[] = {0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 
+                             0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00};
+        ili9341_send_cmd_data(ILI9341_GMCTRP1, gamma_p, 15);
+        
+        // Gamma correction (negative)
+        uint8_t gamma_n[] = {0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 
+                             0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F};
+        ili9341_send_cmd_data(ILI9341_GMCTRN1, gamma_n, 15);
         
         // Sleep out
         ili9341_send_cmd(ILI9341_SLPOUT);
@@ -318,6 +359,9 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
         
         gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
         
+        // LVGL outputs RGB565 in RGB order, display is configured for BGR mode (BGR bit set in MADCTL)
+        // The BGR bit swaps the color channels to match LVGL's RGB565 output
+        // No additional color swapping needed - send pixels directly
         uint16_t *pixels = (uint16_t *)color_p;
         size_t remaining_pixels = pixel_count;
         size_t offset = 0;

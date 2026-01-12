@@ -38,7 +38,7 @@ Modified `platformio.ini` to use `--before=no_reset` to prevent automatic resets
 Run the fix script:
 ```bash
 cd /home/ajlennon/data_drive/dd/precisionpour
-sudo ./fix_usb_disconnect.sh
+sudo ./scripts/fix_usb_disconnect.sh
 ```
 
 ## Manual Steps

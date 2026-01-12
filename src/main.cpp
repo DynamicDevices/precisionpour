@@ -564,28 +564,21 @@ void setup() {
         #endif
     }
     
-    // Get chip ID for MQTT (same method as production UI uses)
-    char chip_id[32] = {0};
-    uint8_t mac[6];
-    #ifdef ESP_PLATFORM
-        esp_err_t mac_ret = esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    #else
-        esp_err_t mac_ret = esp_efuse_mac_get_default(mac);
-    #endif
-    if (mac_ret == ESP_OK) {
-        snprintf(chip_id, sizeof(chip_id), "%02X%02X%02X%02X%02X%02X",
-                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    // Get chip ID for MQTT using SOC UID (unique chip identifier)
+    char chip_id[17] = {0};  // 16 hex chars + null terminator for 64-bit SOC UID
+    if (get_soc_uid_string(chip_id, sizeof(chip_id))) {
         #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG_MAIN, "[Setup] Chip ID: %s", chip_id);
+            ESP_LOGI(TAG_MAIN, "[Setup] SOC UID: %s", chip_id);
         #else
-            Serial.printf("[Setup] Chip ID: %s\r\n", chip_id);
+            Serial.printf("[Setup] SOC UID: %s\r\n", chip_id);
         #endif
     } else {
         #ifdef ESP_PLATFORM
-            ESP_LOGE(TAG_MAIN, "[Setup] Failed to get chip ID");
+            ESP_LOGE(TAG_MAIN, "[Setup] Failed to get SOC UID");
         #else
-            Serial.println("[Setup] Failed to get chip ID");
+            Serial.println("[Setup] Failed to get SOC UID");
         #endif
+        chip_id[0] = '\0';  // Ensure it's empty on failure
     }
     
     // Initialize MQTT client (only if WiFi is connected and stable)
@@ -653,7 +646,8 @@ void loop_body();
         #endif
         while (1) {
             loop_body();
-            vTaskDelay(pdMS_TO_TICKS(5));
+            // Small delay to prevent CPU spinning, but short enough for watchdog
+            vTaskDelay(pdMS_TO_TICKS(10));  // Increased from 5ms to 10ms for stability
         }
     }, "main_loop", 8192, NULL, 5, &main_loop_task_handle);
     
@@ -671,16 +665,36 @@ void loop_body() {
 #else
 void loop() {
 #endif
+    // Feed watchdog timer at the start of each loop iteration (defensive)
+    #if ENABLE_WATCHDOG
+    esp_task_wdt_reset();
+    #endif
+    
     // Handle LVGL tasks (should be called every few milliseconds)
     lv_timer_handler();
     
+    // Feed watchdog after LVGL (in case LVGL operations take time)
+    #if ENABLE_WATCHDOG
+    esp_task_wdt_reset();
+    #endif
+    
     // WiFi connection maintenance
     wifi_manager_loop();
+    
+    // Feed watchdog after WiFi operations (in case they take time)
+    #if ENABLE_WATCHDOG
+    esp_task_wdt_reset();
+    #endif
     
     // MQTT connection maintenance (only if WiFi is connected)
     if (wifi_manager_is_connected()) {
         mqtt_client_loop();
     }
+    
+    // Feed watchdog after MQTT operations
+    #if ENABLE_WATCHDOG
+    esp_task_wdt_reset();
+    #endif
     
     // Update flow meter (calculates flow rate and volume)
     flow_meter_update();
@@ -700,7 +714,7 @@ void loop() {
     // Touch controller is handled by LVGL touch driver
     // No need for continuous monitoring here
     
-    // Feed watchdog timer
+    // Feed watchdog timer at the end of loop
     #if ENABLE_WATCHDOG
     esp_task_wdt_reset();
     #endif
@@ -712,12 +726,23 @@ void loop() {
             #ifdef ESP_PLATFORM
                 ESP_LOGE(TAG_MAIN, "[Error] Too many consecutive errors (%d), resetting in %d ms...", 
                          consecutive_errors, ERROR_RESET_DELAY_MS);
+                // Use vTaskDelay instead of delay() to allow watchdog feeding
+                // Break the delay into smaller chunks and feed watchdog
+                int delay_ms = ERROR_RESET_DELAY_MS;
+                while (delay_ms > 0) {
+                    int chunk = (delay_ms > 1000) ? 1000 : delay_ms;
+                    vTaskDelay(pdMS_TO_TICKS(chunk));
+                    #if ENABLE_WATCHDOG
+                    esp_task_wdt_reset();
+                    #endif
+                    delay_ms -= chunk;
+                }
             #else
                 Serial.printf("[Error] Too many consecutive errors (%d), resetting in %d ms...\r\n", 
                              consecutive_errors, ERROR_RESET_DELAY_MS);
                 Serial.flush();
+                delay(ERROR_RESET_DELAY_MS);
             #endif
-            delay(ERROR_RESET_DELAY_MS);
             ESP.restart();
         }
     } else if (consecutive_errors > 0 && (millis() - last_error_time) > 60000) {

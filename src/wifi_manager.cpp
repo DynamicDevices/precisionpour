@@ -28,6 +28,9 @@
     #include <esp_wifi.h>
     #include <nvs.h>
     #include <nvs_flash.h>
+    #if ENABLE_WATCHDOG
+    #include <esp_task_wdt.h>
+    #endif
     #include <cstring>
     #include <string>
     #define TAG "wifi"
@@ -332,19 +335,22 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
         unsigned long start_time = millis();
         unsigned long timeout = 30000; // 30 second timeout
         
+        // Set WiFi component log level to INFO
+        esp_log_level_set("wifi", ESP_LOG_INFO);
+        
         while (!wifi_connected && (millis() - start_time) < timeout) {
-            delay(500);
             #ifdef ESP_PLATFORM
-                ESP_LOGI(TAG, ".");
+                vTaskDelay(pdMS_TO_TICKS(500));
+                #if ENABLE_WATCHDOG
+                esp_task_wdt_reset();  // Feed watchdog during connection wait
+                #endif
             #else
-                Serial.print(".");
+                delay(500);
             #endif
+            // Removed dot printing - too verbose
         }
-        #ifdef ESP_PLATFORM
-            ESP_LOGI(TAG, "");
-        #else
-            Serial.println();
-        #endif
+        
+        // WiFi log level remains at INFO
         
         if (wifi_connected) {
             ESP_LOGI(TAG, "[WiFi] Connected!");
@@ -405,6 +411,9 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
 bool wifi_manager_init() {
     #ifdef ESP_PLATFORM
         ESP_LOGI(TAG, "\n=== Initializing WiFi ===");
+        
+        // Set WiFi component log level to INFO
+        esp_log_level_set("wifi", ESP_LOG_INFO);
     #else
         Serial.println("\n=== Initializing WiFi ===");
     #endif
@@ -422,6 +431,9 @@ bool wifi_manager_init() {
         
         wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
         ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+        
+        // Set WiFi component log level to INFO
+        esp_log_level_set("wifi", ESP_LOG_INFO);
         
         ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                             ESP_EVENT_ANY_ID,
@@ -449,11 +461,38 @@ bool wifi_manager_init() {
             Serial.println("[WiFi] Using saved credentials");
         #endif
     } else {
-        // Use hardcoded credentials from secrets.h
-        ssid = String(WIFI_SSID);
-        password = String(WIFI_PASSWORD);
+        // Use credentials from KConfig (ESP-IDF) or secrets.h (Arduino)
+        // KConfig values take priority, secrets.h is fallback if empty
+        #ifdef ESP_PLATFORM
+            // ESP-IDF: Use KConfig values if set (non-empty), otherwise fallback to secrets.h
+            // CONFIG_WIFI_SSID is available from sdkconfig.h (included via config.h)
+            #ifdef CONFIG_WIFI_SSID
+                if (strlen(CONFIG_WIFI_SSID) > 0) {
+                    ssid = String(CONFIG_WIFI_SSID);
+                    password = String(CONFIG_WIFI_PASSWORD);
+                    ESP_LOGI(TAG, "[WiFi] Using KConfig credentials");
+                } else {
+                    // Fallback to secrets.h if KConfig values are empty
+                    ssid = String(WIFI_SSID);  // From secrets.h
+                    password = String(WIFI_PASSWORD);  // From secrets.h
+                    ESP_LOGI(TAG, "[WiFi] Using secrets.h credentials (KConfig empty)");
+                }
+            #else
+                // CONFIG_WIFI_SSID not defined, use secrets.h
+                ssid = String(WIFI_SSID);
+                password = String(WIFI_PASSWORD);
+                ESP_LOGI(TAG, "[WiFi] Using secrets.h credentials (KConfig not available)");
+            #endif
+        #else
+            // Arduino: Always use secrets.h
+            ssid = String(WIFI_SSID);
+            password = String(WIFI_PASSWORD);
+            Serial.printf("[WiFi] Using credentials from secrets.h\r\n");
+            Serial.printf("[WiFi] Connecting to SSID: '%s'\r\n", ssid.c_str());
+        #endif
         #ifdef ESP_PLATFORM
             ESP_LOGI(TAG, "[WiFi] Using hardcoded credentials");
+            ESP_LOGI(TAG, "[WiFi] Connecting to SSID: '%s'", ssid.c_str());
         #else
             Serial.println("[WiFi] Using hardcoded credentials");
         #endif
@@ -647,6 +686,13 @@ bool wifi_manager_is_connected() {
 }
 
 void wifi_manager_loop() {
+    #ifdef ESP_PLATFORM
+        #if ENABLE_WATCHDOG
+        // Feed watchdog at start of WiFi loop (defensive)
+        esp_task_wdt_reset();
+        #endif
+    #endif
+    
     #if USE_IMPROV_WIFI
     // Handle Improv WiFi BLE provisioning if active
     if (improv_provisioning_active) {
@@ -732,9 +778,36 @@ void wifi_manager_loop() {
             
             // Try saved credentials first
             if (USE_SAVED_CREDENTIALS && load_saved_credentials(ssid, password)) {
+                #ifdef ESP_PLATFORM
+                    ESP_LOGI(TAG, "[WiFi] Reconnecting to SSID: '%s' (from saved credentials)", ssid.c_str());
+                #else
+                    Serial.printf("[WiFi] Reconnecting to SSID: '%s' (from saved credentials)\r\n", ssid.c_str());
+                #endif
             } else {
-                ssid = String(WIFI_SSID);
-                password = String(WIFI_PASSWORD);
+                // Use credentials from KConfig (ESP-IDF) or secrets.h (Arduino)
+                #ifdef ESP_PLATFORM
+                    // ESP-IDF: Use KConfig values if set, otherwise fallback to secrets.h
+                    #ifdef CONFIG_WIFI_SSID
+                        if (strlen(CONFIG_WIFI_SSID) > 0) {
+                            ssid = String(CONFIG_WIFI_SSID);
+                            password = String(CONFIG_WIFI_PASSWORD);
+                        } else {
+                            // Fallback to secrets.h if KConfig values are empty
+                            ssid = String(WIFI_SSID);  // From secrets.h
+                            password = String(WIFI_PASSWORD);  // From secrets.h
+                        }
+                    #else
+                        // CONFIG_WIFI_SSID not defined, use secrets.h
+                        ssid = String(WIFI_SSID);
+                        password = String(WIFI_PASSWORD);
+                    #endif
+                    ESP_LOGI(TAG, "[WiFi] Reconnecting to SSID: '%s'", ssid.c_str());
+                #else
+                    // Arduino: Always use secrets.h
+                    ssid = String(WIFI_SSID);
+                    password = String(WIFI_PASSWORD);
+                    Serial.printf("[WiFi] Reconnecting to SSID: '%s'\r\n", ssid.c_str());
+                #endif
             }
             
             #ifdef ESP_PLATFORM

@@ -1,40 +1,50 @@
 #!/bin/bash
+#
+# Copyright (c) 2026 Dynamic Devices Ltd
+# All rights reserved.
+#
 # Image Conversion Script for LVGL
 # Converts PNG images to LVGL-compatible C arrays
 # Requires ImageMagick and LVGL image converter
+#
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-RESOURCES_DIR="$PROJECT_ROOT/resources"
-OUTPUT_DIR="$PROJECT_ROOT/include/images"
+RESOURCES_DIR="${PROJECT_ROOT}/resources"
+OUTPUT_DIR="${PROJECT_ROOT}/include/images"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-INPUT_IMAGE="$RESOURCES_DIR/splashscreen.png"
-OUTPUT_FILE="$OUTPUT_DIR/splashscreen_img.h"
+INPUT_IMAGE="${RESOURCES_DIR}/splashscreen.png"
+OUTPUT_FILE="${OUTPUT_DIR}/splashscreen_img.h"
+TEMP_RESIZED="/tmp/splashscreen_resized.png"
 
+# Check if input image exists
 if [ ! -f "$INPUT_IMAGE" ]; then
-    echo "Error: Input image not found: $INPUT_IMAGE"
+    echo "Error: Input image not found: $INPUT_IMAGE" >&2
     exit 1
 fi
 
 echo "Converting image for LVGL..."
 echo "Input: $INPUT_IMAGE"
 echo "Output: $OUTPUT_FILE"
+echo ""
 
 # Check if ImageMagick is installed
 if ! command -v convert &> /dev/null; then
-    echo "Warning: ImageMagick not found. Install with: sudo apt install imagemagick"
-    echo "You can manually convert the image using LVGL's online converter:"
-    echo "https://lvgl.io/tools/imageconverter"
+    echo "Error: ImageMagick not found." >&2
+    echo "Install with: sudo apt install imagemagick" >&2
+    echo "" >&2
+    echo "You can manually convert the image using LVGL's online converter:" >&2
+    echo "https://lvgl.io/tools/imageconverter" >&2
     exit 1
 fi
 
 # Resize to display resolution (320x240)
-TEMP_RESIZED="/tmp/splashscreen_resized.png"
+echo "Resizing image to 320x240..."
 convert "$INPUT_IMAGE" -resize 320x240^ -gravity center -extent 320x240 -format PNG32 "$TEMP_RESIZED"
 
 echo ""
