@@ -152,6 +152,15 @@ precisionpour/
 - MQTT client for cloud communication
 - Device-specific MQTT topics
 - Activity monitoring and status indicators
+- JSON-based command protocol for pour control
+
+### Pouring Mode UI
+- Real-time flow rate display (mL/min)
+- Volume tracking (ml)
+- Cost calculation with configurable currency (GBP/USD)
+- Maximum volume limits
+- Touch-to-return to main screen
+- WiFi and communication status icons
 
 ### Project Structure
 
@@ -249,10 +258,37 @@ bool connected = mqtt_client_is_connected();
 bool active = mqtt_client_has_activity();
 ```
 
+### MQTT Commands
+
+The device subscribes to `precisionpour/{CHIP_ID}/commands` and `precisionpour/{CHIP_ID}/commands/paid`.
+
+#### "paid" Command (JSON)
+Triggers pouring mode with payment parameters:
+```json
+{
+  "id": "unique_payment_id",
+  "cost_per_ml": 0.005,
+  "max_ml": 500,
+  "currency": "GBP"
+}
+```
+
+- `id`: Unique identifier for this pour transaction
+- `cost_per_ml`: Cost per milliliter (e.g., 0.005 = £0.005/ml)
+- `max_ml`: Maximum milliliters allowed for this pour
+- `currency`: Currency code - "GBP" (British Pounds) or "USD" (US Dollars)
+
+#### Other Commands
+- `start_pour`: Switch to pouring screen
+- `stop_pour`: Switch back to production screen
+- `cost:X.XX`: Update cost per unit (legacy format)
+
 ## Documentation
 
 - **[Setup Guide](docs/SETUP_GUIDE.md)** - Detailed PlatformIO installation instructions
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and shortcuts
 - **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Hardware configuration guide
 - **[Flow Meter Guide](docs/FLOW_METER.md)** - YF-S201 flow sensor integration details
+- **[MQTT Protocol](docs/MQTT_PROTOCOL.md)** - MQTT command protocol and JSON format
+- **[Touchscreen Debugging](docs/TOUCHSCREEN_DEBUGGING.md)** - Touchscreen troubleshooting guide
 - **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Code organization and file structure

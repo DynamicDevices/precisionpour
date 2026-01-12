@@ -30,6 +30,12 @@ static lv_obj_t *comm_spark1 = NULL;  // Spark/pulse element 1
 static lv_obj_t *comm_spark2 = NULL;  // Spark/pulse element 2
 static lv_obj_t *comm_spark3 = NULL;  // Spark/pulse element 3
 
+// WiFi signal strength update throttling
+static unsigned long last_wifi_rssi_update = 0;
+static const unsigned long WIFI_RSSI_UPDATE_INTERVAL_MS = 10000;  // Update every 10 seconds
+static int cached_rssi = 0;  // Cached RSSI value
+static bool cached_wifi_connected = false;  // Cached connection status
+
 // Brand colors (matching PrecisionPour branding)
 #define COLOR_BACKGROUND lv_color_hex(0x000000) // Pure black background (RGB 0,0,0)
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
@@ -336,8 +342,17 @@ void production_mode_update() {
     // Update WiFi status icon
     if (wifi_status_container != NULL && 
         wifi_bar1 != NULL && wifi_bar2 != NULL && wifi_bar3 != NULL && wifi_bar4 != NULL) {
-        bool wifi_connected = wifi_manager_is_connected();
-        int rssi = wifi_manager_get_rssi();
+        unsigned long now = millis();
+        
+        // Only update RSSI every 10 seconds
+        if (now - last_wifi_rssi_update >= WIFI_RSSI_UPDATE_INTERVAL_MS || last_wifi_rssi_update == 0) {
+            cached_wifi_connected = wifi_manager_is_connected();
+            cached_rssi = wifi_manager_get_rssi();
+            last_wifi_rssi_update = now;
+        }
+        
+        bool wifi_connected = cached_wifi_connected;
+        int rssi = cached_rssi;
         
         // Determine color: Green when connected, Red when disconnected
         lv_color_t icon_color = wifi_connected ? lv_color_hex(0x00FF00) : lv_color_hex(0xFF0000);

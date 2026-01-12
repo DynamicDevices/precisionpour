@@ -69,6 +69,14 @@
 // Future hardware pins (placeholders for flow meter and RFID/NFC)
 #define FLOW_METER_PIN 25  // GPIO pin for flow meter interrupt
 
+// Cost configuration (for pouring mode)
+#define COST_PER_UNIT_DEFAULT 5.00  // Default cost per liter in currency (e.g., £5.00 per liter)
+
+// Currency symbol configuration
+// Options: "GBP " (pound - text prefix since £ symbol not in font), "$" (dollar), or any other string
+// Note: £ symbol (U+00A3) is not in the Montserrat font, so we use "GBP " text prefix instead
+#define CURRENCY_SYMBOL "GBP "  // Default currency symbol (text prefix for pounds)
+
 // Available pins from hardware documentation:
 // MicroSD Card (if needed):
 //   GPIO5:  SD card select signal (CS), low level effective
@@ -106,5 +114,10 @@
 // RFID/NFC (if needed):
 #define RFID_CS_PIN 26     // GPIO pin for RFID/NFC chip select (GPIO26 available - was audio DAC, but can be repurposed)
 #define RFID_RST_PIN 32    // GPIO pin for RFID/NFC reset (GPIO32 available)
+
+// RGB LED pins (common anode: LOW=on, HIGH=off)
+#define LED_R_PIN 22  // Red LED control - GPIO22
+#define LED_G_PIN 16  // Green LED control - GPIO16
+#define LED_B_PIN 17  // Blue LED control - GPIO17
 
 #endif // CONFIG_H

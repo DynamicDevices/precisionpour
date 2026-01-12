@@ -12,6 +12,7 @@ static WiFiClient wifi_client;
 static PubSubClient mqtt_client(wifi_client);
 static char mqtt_client_id[64] = {0};
 static char mqtt_subscribe_topic[128] = {0};
+static char mqtt_paid_topic[128] = {0};  // Topic for "paid" command
 static unsigned long last_reconnect_attempt = 0;
 static bool mqtt_connected = false;
 static unsigned long last_activity_time = 0;  // Track last TX/RX activity
@@ -50,13 +51,23 @@ bool mqtt_client_reconnect(const char* chip_id) {
         mqtt_connected = true;
         Serial.println("[MQTT] Connected!");
         
-        // Subscribe to device-specific topic
+        // Subscribe to device-specific command topics
         if (strlen(mqtt_subscribe_topic) > 0) {
             Serial.printf("[MQTT] Subscribing to topic: %s\r\n", mqtt_subscribe_topic);
             if (mqtt_client.subscribe(mqtt_subscribe_topic)) {
                 Serial.println("[MQTT] Subscription successful!");
             } else {
                 Serial.println("[MQTT] Subscription failed!");
+            }
+        }
+        
+        // Subscribe to paid command topic
+        if (strlen(mqtt_paid_topic) > 0) {
+            Serial.printf("[MQTT] Subscribing to topic: %s\r\n", mqtt_paid_topic);
+            if (mqtt_client.subscribe(mqtt_paid_topic)) {
+                Serial.println("[MQTT] Paid topic subscription successful!");
+            } else {
+                Serial.println("[MQTT] Paid topic subscription failed!");
             }
         }
         
@@ -78,6 +89,10 @@ bool mqtt_client_init(const char* chip_id) {
     // Build subscribe topic: prefix/chip_id/commands
     snprintf(mqtt_subscribe_topic, sizeof(mqtt_subscribe_topic), "%s/%s/commands", MQTT_TOPIC_PREFIX, chip_id);
     Serial.printf("[MQTT] Subscribe topic: %s\r\n", mqtt_subscribe_topic);
+    
+    // Build paid command topic: prefix/chip_id/commands/paid
+    snprintf(mqtt_paid_topic, sizeof(mqtt_paid_topic), "%s/%s/commands/paid", MQTT_TOPIC_PREFIX, chip_id);
+    Serial.printf("[MQTT] Paid topic: %s\r\n", mqtt_paid_topic);
     
     // Configure MQTT server
     mqtt_client.setServer(MQTT_SERVER, MQTT_PORT);
