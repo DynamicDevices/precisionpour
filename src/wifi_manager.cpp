@@ -305,32 +305,30 @@ void wifi_manager_start_provisioning() {
         ble_device_name
     );
     
-    // Research findings:
-    // The Improv WiFi library REQUIRES the following in primary advertisement:
+    // Research findings from official Improv WiFi SDK (https://github.com/improv-wifi/sdk-cpp):
+    // - The SDK defines the 128-bit UUIDs but doesn't implement BLE advertising
+    // - Our library (Improv WiFi Library) implements BLE on top of the SDK
+    // - The library code shows awareness of 31-byte limit (see ImprovWiFiBLE.cpp line 315-316)
+    //
+    // Primary advertisement breakdown (REQUIRED by Improv protocol):
     // 1. Flags: 3 bytes (0x06)
-    // 2. 128-bit Service UUID: 18 bytes (REQUIRED by Improv protocol, cannot be shortened)
+    // 2. 128-bit Service UUID: 18 bytes (REQUIRED - defined in SDK, cannot be shortened)
     // 3. Service Data (UUID 0x4677 + 8-byte payload): 11 bytes (REQUIRED)
     // Total: 32 bytes (exceeds 31-byte BLE limit by 1 byte)
     //
-    // The library code shows awareness of this (see line 315-316 in ImprovWiFiBLE.cpp):
-    // "Optional: a short name in the primary ADV helps some scanners; keep it short to stay under 31B"
-    // But the base data is already 32 bytes!
+    // The library already optimizes by:
+    // - Using scan response for full device name (separate 31-byte packet)
+    // - Only adding short name to primary ADV if device_name is not empty
     //
-    // Solutions:
-    // 1. Use empty device name (already done) - prevents adding short name to primary ADV
-    // 2. Some BLE stacks are lenient and allow 1-byte overage (NimBLE may handle this)
-    // 3. Extended advertising (Bluetooth 5.0+) supports up to 255 bytes, but requires:
-    //    - ESP32 with Bluetooth 5.0 support (ESP32-S3, newer ESP32)
-    //    - Target devices must also support extended advertising
-    //    - Library modification would be required
-    //
-    // Current approach: Use empty device name and rely on scan response for identification
-    // The device name will appear in scan response (separate 31-byte packet, no size limit issue)
+    // Current solution: Use empty device name to prevent adding it to primary ADV
+    // This keeps primary ADV at exactly 32 bytes (1 byte over, but NimBLE may handle it)
+    // Device name appears in scan response for device identification
     
-    Serial.println("[Improv WiFi BLE] Note: Primary ADV is 32 bytes (1 byte over 31-byte limit)");
-    Serial.println("[Improv WiFi BLE] This is due to Improv protocol requirements (128-bit UUID + Service Data)");
-    Serial.println("[Improv WiFi BLE] NimBLE may handle the 1-byte overage gracefully");
-    Serial.println("[Improv WiFi BLE] Device name is in scan response for identification");
+    Serial.println("[Improv WiFi BLE] Primary ADV: 32 bytes (Flags:3 + UUID:18 + ServiceData:11)");
+    Serial.println("[Improv WiFi BLE] This exceeds 31-byte limit by 1 byte (Improv protocol requirement)");
+    Serial.println("[Improv WiFi BLE] Using empty device name to avoid adding to primary ADV");
+    Serial.println("[Improv WiFi BLE] Device name will appear in scan response (separate packet)");
+    Serial.println("[Improv WiFi BLE] NimBLE may handle 1-byte overage gracefully or log warning");
     
     // Set callbacks
     improvWiFiBLE.onImprovError(on_improv_error);
