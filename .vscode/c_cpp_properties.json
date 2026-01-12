@@ -180,7 +180,6 @@
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/rt/include",
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/spiffs/include",
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
-                "/data_drive/dd/precisionpour/lib/TFT_eSPI_Config",
                 ""
             ],
             "browse": {
@@ -358,7 +357,6 @@
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/rt/include",
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/spiffs/include",
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
-                    "/data_drive/dd/precisionpour/lib/TFT_eSPI_Config",
                     ""
                 ]
             },

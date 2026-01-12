@@ -5,7 +5,6 @@
 #
 # PlatformIO extra script to copy configuration files to library directories
 # - Copies lv_conf.h to LVGL library directory
-# - Copies User_Setup.h to TFT_eSPI library directory (Arduino framework only)
 #
 
 Import("env")
@@ -16,7 +15,7 @@ import time
 
 def copy_lv_conf():
     """Copy lv_conf.h to LVGL library directory"""
-    env_name = env.get("PIOENV", "esp32dev")
+    env_name = env.get("PIOENV", "esp32dev-idf")
     libdeps_dir = env["PROJECT_LIBDEPS_DIR"]
     project_dir = env["PROJECT_DIR"]
 
@@ -46,45 +45,6 @@ def copy_lv_conf():
         return False
 
 
-def copy_user_setup():
-    """Copy User_Setup.h to TFT_eSPI library directory (Arduino framework only)"""
-    env_name = env.get("PIOENV", "esp32dev")
-    
-    # Only needed for Arduino framework
-    if env_name != "esp32dev":
-        return True
-
-    libdeps_dir = env["PROJECT_LIBDEPS_DIR"]
-    project_dir = env["PROJECT_DIR"]
-
-    tft_dir = os.path.join(libdeps_dir, "TFT_eSPI")
-    user_setup_src = os.path.join(project_dir, "lib", "TFT_eSPI_Config", "User_Setup.h")
-    user_setup_dst = os.path.join(tft_dir, "User_Setup.h")
-
-    if not os.path.exists(user_setup_src):
-        print(f"[extra_script] Warning: User_Setup.h source not found: {user_setup_src}")
-        return False
-
-    if not os.path.exists(tft_dir):
-        print(f"[extra_script] Warning: TFT_eSPI directory not found: {tft_dir}")
-        return False
-
-    try:
-        shutil.copy2(user_setup_src, user_setup_dst)
-        print(f"[extra_script] Copied User_Setup.h to {user_setup_dst}")
-        
-        # Verify driver defines are accessible
-        driver_defines = os.path.join(tft_dir, "TFT_Drivers", "ILI9341_Defines.h")
-        if os.path.exists(driver_defines):
-            print(f"[extra_script] Driver defines found at {driver_defines}")
-        
-        return True
-    except Exception as e:
-        print(f"[extra_script] Error copying User_Setup.h: {e}")
-        return False
-
-
 # Main execution
 if __name__ == "__main__":
     copy_lv_conf()
-    copy_user_setup()

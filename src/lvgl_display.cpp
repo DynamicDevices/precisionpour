@@ -187,21 +187,21 @@ static spi_device_handle_t spi_handle = NULL;
         // Bit 6 (0x40): MX (column address order)
         // Bit 7 (0x80): MY (row address order)
         // 
-        // Note: TFT_eSPI defaults to BGR mode (TFT_MAD_COLOR_ORDER = TFT_MAD_BGR = 0x08)
-        // Match TFT_eSPI rotation settings for compatibility:
+        // Note: Display configured for BGR mode (bit 3 = 0x08)
+        // Rotation settings (for reference, these match previous TFT_eSPI configuration):
         // Rotation 0: MX=1, BGR=1 -> 0x40 | 0x08 = 0x48
         // Rotation 1: MV=1, BGR=1 -> 0x20 | 0x08 = 0x28
         // Rotation 2: MY=1, BGR=1 -> 0x80 | 0x08 = 0x88
         // Rotation 3: MX=1, MY=1, MV=1, BGR=1 -> 0x40 | 0x80 | 0x20 | 0x08 = 0xE8
         uint8_t madctl = 0x00;
         if (DISPLAY_ROTATION == 1) {
-            // Landscape: MV=1, BGR=1 (matches TFT_eSPI rotation 1)
+            // Landscape: MV=1, BGR=1
             madctl = 0x20 | 0x08;  // MV=1, BGR=1 (bit 3)
         } else if (DISPLAY_ROTATION == 3) {
-            // Landscape flipped: MX=1, MY=1, MV=1, BGR=1 (matches TFT_eSPI rotation 3)
+            // Landscape flipped: MX=1, MY=1, MV=1, BGR=1
             madctl = 0x40 | 0x80 | 0x20 | 0x08;  // MX, MY, MV, BGR=1
         } else {
-            // Portrait: MV=1, BGR=1 (matches TFT_eSPI rotation 0/2)
+            // Portrait: MV=1, BGR=1
             madctl = 0x20 | 0x08;  // MV=1, BGR=1 (bit 3)
         }
         ili9341_send_cmd_data(ILI9341_MADCTL, &madctl, 1);
@@ -331,8 +331,8 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
     gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
     
     // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
-    // TFT_eSPI pushColors is called with swap=true, which swaps bytes of each pixel
-    // We need to match this behavior: swap high and low bytes of each 16-bit pixel
+    // Byte swapping: swap high and low bytes of each 16-bit pixel
+    // This matches the behavior required by the display controller
     // Example: 0xF800 (little-endian) -> 0x00F8 (byte-swapped)
     uint16_t *pixels = (uint16_t *)color_p;
     size_t remaining_pixels = pixel_count;
@@ -345,7 +345,7 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
         while (remaining_pixels > 0) {
             size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
             
-            // Swap bytes for each pixel (match TFT_eSPI swap=true behavior)
+            // Swap bytes for each pixel (required by display controller)
             size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
         for (size_t i = 0; i < buffer_pixels; i++) {
             uint16_t pixel = pixels[offset + i];
