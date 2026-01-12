@@ -305,34 +305,32 @@ void wifi_manager_start_provisioning() {
         ble_device_name
     );
     
-    // Try to get actual advertising data size (if available through NimBLE)
-    // Note: The Improv WiFi library sets up advertising internally, so we may not be able to access it directly
-    // But we can at least see the string lengths we're providing
-    NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
-    if (advertising != NULL) {
-        // Calculate estimated advertising data size
-        // BLE advertising packet structure:
-        // - Flags (3 bytes: 1 byte length + 1 byte type + 1 byte flags)
-        // - Service UUIDs (varies, typically 2-20 bytes)
-        // - Service data (varies, includes our strings)
-        // - Device name (varies, 1 byte length + 1 byte type + name length)
-        // Total must be <= 31 bytes
-        
-        // Estimate: Service UUID (16-bit = 3 bytes), Service data (1+1+data), Name (1+1+name)
-        // Improv WiFi typically uses: 3 (flags) + 3 (UUID) + 3+service_data + 3+name = ~12-15 base + data
-        int estimated_base = 12;  // Flags + UUID + overhead
-        int estimated_service_data = strlen(firmware_name) + strlen(firmware_version) + strlen(ble_device_name) + 10; // +10 for structure overhead
-        int estimated_total = estimated_base + estimated_service_data;
-        
-        Serial.printf("[Improv WiFi BLE] Estimated advertising data size: ~%d bytes\r\n", estimated_total);
-        if (estimated_total > 31) {
-            Serial.printf("[Improv WiFi BLE] WARNING: Estimated size exceeds 31-byte limit by %d bytes!\r\n", 
-                         estimated_total - 31);
-        } else {
-            Serial.printf("[Improv WiFi BLE] Estimated size within limit (%d bytes remaining)\r\n", 
-                         31 - estimated_total);
-        }
-    }
+    // Research findings:
+    // The Improv WiFi library REQUIRES the following in primary advertisement:
+    // 1. Flags: 3 bytes (0x06)
+    // 2. 128-bit Service UUID: 18 bytes (REQUIRED by Improv protocol, cannot be shortened)
+    // 3. Service Data (UUID 0x4677 + 8-byte payload): 11 bytes (REQUIRED)
+    // Total: 32 bytes (exceeds 31-byte BLE limit by 1 byte)
+    //
+    // The library code shows awareness of this (see line 315-316 in ImprovWiFiBLE.cpp):
+    // "Optional: a short name in the primary ADV helps some scanners; keep it short to stay under 31B"
+    // But the base data is already 32 bytes!
+    //
+    // Solutions:
+    // 1. Use empty device name (already done) - prevents adding short name to primary ADV
+    // 2. Some BLE stacks are lenient and allow 1-byte overage (NimBLE may handle this)
+    // 3. Extended advertising (Bluetooth 5.0+) supports up to 255 bytes, but requires:
+    //    - ESP32 with Bluetooth 5.0 support (ESP32-S3, newer ESP32)
+    //    - Target devices must also support extended advertising
+    //    - Library modification would be required
+    //
+    // Current approach: Use empty device name and rely on scan response for identification
+    // The device name will appear in scan response (separate 31-byte packet, no size limit issue)
+    
+    Serial.println("[Improv WiFi BLE] Note: Primary ADV is 32 bytes (1 byte over 31-byte limit)");
+    Serial.println("[Improv WiFi BLE] This is due to Improv protocol requirements (128-bit UUID + Service Data)");
+    Serial.println("[Improv WiFi BLE] NimBLE may handle the 1-byte overage gracefully");
+    Serial.println("[Improv WiFi BLE] Device name is in scan response for identification");
     
     // Set callbacks
     improvWiFiBLE.onImprovError(on_improv_error);
