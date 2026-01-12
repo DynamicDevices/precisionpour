@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * LVGL Configuration
  * 
  * LVGL library configuration file.

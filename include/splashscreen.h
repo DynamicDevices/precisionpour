@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * Splashscreen Management
  * 
  * Handles display of splashscreen image during startup with progress bar.

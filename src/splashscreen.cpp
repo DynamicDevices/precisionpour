@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * Splashscreen Implementation
  * 
  * Displays the Precision Pour splashscreen image during startup with animated progress bar.

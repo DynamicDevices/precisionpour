@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * Flow Meter Manager
  * 
  * Handles YF-S201 Hall Effect Flow Sensor reading and calculations

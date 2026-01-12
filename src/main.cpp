@@ -5,6 +5,16 @@
  * Uses LVGL for modern UI development.
  */
 
+/**
+ * PrecisionPour ESP32 Firmware
+ * 
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
 #include <Arduino.h>
 #include "config.h"
 #include "lvgl_display.h"

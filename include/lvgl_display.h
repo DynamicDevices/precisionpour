@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * LVGL Display Driver Integration
  * 
  * Integrates TFT_eSPI display with LVGL graphics library.

@@ -1,4 +1,12 @@
 /**
+ * Copyright (c) 2026 Dynamic Devices Ltd
+ * All rights reserved.
+ * 
+ * Proprietary and confidential software.
+ * See LICENSE file for full license terms.
+ */
+
+/**
  * LVGL Touch Driver Implementation
  * Direct SPI communication with XPT2046 using dedicated SPI bus
  * Touch screen uses separate SPI pins: GPIO25(SCLK), GPIO32(MOSI), GPIO39(MISO)

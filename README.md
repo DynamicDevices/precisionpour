@@ -2,6 +2,10 @@
 
 Firmware for ESP32-based touchscreen display system with flow meter monitoring, WiFi connectivity, and MQTT communication for the PrecisionPour beverage dispensing system.
 
+**Copyright (c) 2026 Dynamic Devices Ltd. All rights reserved.**
+
+This software is proprietary and confidential. See [LICENSE](LICENSE) for details.
+
 ## Development Environment Options
 
 ### Option 1: PlatformIO (Recommended) ⭐
