@@ -258,7 +258,24 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     pressure_pressed = xpt2046_is_pressed();
     
     // Determine if touch is pressed
-    pressed = irq_pressed || pressure_pressed;
+    // Require BOTH IRQ and pressure for more reliable detection (reduces false positives from BLE noise)
+    // If IRQ is triggered but no pressure, it's likely electrical noise from BLE radio activity
+    pressed = irq_pressed && pressure_pressed;
+    
+    // Fallback: if pressure is very strong, accept it even without IRQ (for reliability)
+    if (!pressed && pressure_pressed) {
+        // Check if pressure is very strong (definitely a real touch)
+        uint16_t z1 = xpt2046_read(XPT2046_CMD_Z1);
+        uint16_t z2 = xpt2046_read(XPT2046_CMD_Z2);
+        uint16_t pressure = 0;
+        if (z1 > 0 && z2 < 4095) {
+            pressure = z1 + (4095 - z2);
+        }
+        // If pressure is very strong (>200), accept it as real touch even without IRQ
+        if (pressure > 200) {
+            pressed = true;
+        }
+    }
     
     if (pressed) {
         int16_t x, y;
