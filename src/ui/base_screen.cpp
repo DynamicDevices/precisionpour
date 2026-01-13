@@ -12,12 +12,12 @@
 
 // Project headers
 #include "config.h"
-#include "base_screen.h"
-#include "ui_logo.h"
-#include "ui_wifi_icon.h"
-#include "ui_data_icon.h"
-#include "mqtt_manager.h"
-#include "wifi_manager.h"
+#include "ui/base_screen.h"
+#include "ui/ui_logo.h"
+#include "ui/ui_wifi_icon.h"
+#include "ui/ui_data_icon.h"
+#include "mqtt/mqtt_manager.h"
+#include "wifi/wifi_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -27,7 +27,7 @@
 #define TAG "base_screen"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Static content area container
 static lv_obj_t* content_area = NULL;

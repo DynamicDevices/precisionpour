@@ -14,7 +14,7 @@
  */
 
 #include "ui.h"
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 #include "esp_log.h"
 #define TAG "ui"
 

@@ -13,7 +13,7 @@
 
 // Project headers
 #include "config.h"
-#include "lvgl_display.h"
+#include "display/lvgl_display.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -24,7 +24,7 @@
 #define TAG "display"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // ESP-IDF SPI handle
 static spi_device_handle_t spi_handle = NULL;
@@ -236,51 +236,11 @@ static spi_device_handle_t spi_handle = NULL;
         ili9341_send_cmd(ILI9341_DISPLAYON);
         delay(10);
         
-        // Clear screen (set window first, then send data)
-        uint8_t data[4];
-        
-        // Column address set
-        data[0] = 0x00;
-        data[1] = 0x00;
-        data[2] = ((DISPLAY_WIDTH - 1) >> 8) & 0xFF;
-        data[3] = (DISPLAY_WIDTH - 1) & 0xFF;
-        ili9341_send_cmd_data(ILI9341_CASET, data, 4);
-        
-        // Row address set
-        data[0] = 0x00;
-        data[1] = 0x00;
-        data[2] = ((DISPLAY_HEIGHT - 1) >> 8) & 0xFF;
-        data[3] = (DISPLAY_HEIGHT - 1) & 0xFF;
-        ili9341_send_cmd_data(ILI9341_PASET, data, 4);
-        
-        // Write to RAM - clear screen more efficiently
-        ili9341_send_cmd(ILI9341_RAMWR);
-        gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
-        
-        // Send black pixels in chunks
-        uint16_t black = 0x0000;
-        const size_t clear_chunk_size = 1024;  // 1024 pixels = 2048 bytes
-        size_t total_pixels = DISPLAY_WIDTH * DISPLAY_HEIGHT;
-        
-        for (size_t i = 0; i < total_pixels; i += clear_chunk_size) {
-            size_t chunk_pixels = (total_pixels - i > clear_chunk_size) ? clear_chunk_size : (total_pixels - i);
-            size_t chunk_bytes = chunk_pixels * 2;
-            
-            // Create a buffer of black pixels
-            uint16_t black_buffer[clear_chunk_size];
-            for (size_t j = 0; j < chunk_pixels; j++) {
-                black_buffer[j] = black;
-            }
-            
-            spi_transaction_t t = {};
-            t.length = chunk_bytes * 8;
-            t.tx_buffer = black_buffer;
-            t.flags = 0;
-            spi_device_transmit(spi_handle, &t);
-        }
-        
         // Enable backlight
         gpio_set_level((gpio_num_t)TFT_BL, 1);
+        
+        // Note: Screen clearing is handled by LVGL when it first renders
+        // No need to manually clear the screen here
         
         ESP_LOGI(TAG, "ILI9341 initialized");
     }

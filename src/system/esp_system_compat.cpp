@@ -5,7 +5,7 @@
  * ESP System Compatibility Layer Implementation
  */
 
-#include "esp_system_compat.h"
+#include "system/esp_system_compat.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_efuse.h"

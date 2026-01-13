@@ -14,7 +14,7 @@
 
 // Project headers
 #include "config.h"
-#include "flow_meter.h"
+#include "flow/flow_meter.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -23,7 +23,7 @@
 #define TAG "flow_meter"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Flow meter constants
 #define PULSES_PER_LITER 450        // YF-S201 outputs 450 pulses per liter

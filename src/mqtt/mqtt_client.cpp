@@ -14,9 +14,9 @@
 
 // Project headers
 #include "config.h"
-#include "mqtt_manager.h"
-#include "mqtt_connection.h"
-#include "mqtt_messages.h"
+#include "mqtt/mqtt_manager.h"
+#include "mqtt/mqtt_connection.h"
+#include "mqtt/mqtt_messages.h"
 
 // System/Standard library headers
 #include <esp_log.h>
@@ -25,7 +25,7 @@
 #define TAG "mqtt"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 bool mqtt_client_init(const char* chip_id) {
     return mqtt_connection_init(chip_id);

@@ -15,7 +15,7 @@
 
 // Project headers
 #include "config.h"
-#include "splashscreen.h"
+#include "ui/splashscreen.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -23,12 +23,12 @@
 #define TAG "splashscreen"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 #if !TEST_MODE
     // Include the Precision Pour logo image (used for both splashscreen and main page)
     #include "images/precision_pour_logo.h"
-    #include "rle_decompress.h"
+    #include "utils/rle_decompress.h"
 #endif
 
 static lv_obj_t *splashscreen_img = NULL;

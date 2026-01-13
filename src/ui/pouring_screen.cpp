@@ -15,10 +15,9 @@
 
 // Project headers
 #include "config.h"
-#include "pouring_screen.h"
-#include "base_screen.h"
-#include "flow_meter.h"
-#include "screen_manager.h"
+#include "ui/pouring_screen.h"
+#include "ui/base_screen.h"
+#include "flow/flow_meter.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -29,7 +28,7 @@
 #define TAG "pouring"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Brand colors
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White

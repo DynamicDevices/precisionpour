@@ -29,6 +29,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <nvs_flash.h>
+#include <time.h>
 #if ENABLE_WATCHDOG
 #include <esp_task_wdt.h>
 #endif
@@ -39,20 +40,20 @@
 #include <ArduinoJson.h>
 
 // Project headers (continued)
-#include "esp_idf_compat.h"
-#include "esp_system_compat.h"
-#include "flow_meter.h"
-#include "lvgl_display.h"
-#include "lvgl_touch.h"
-#include "mqtt_manager.h"
-#include "splashscreen.h"
-#include "wifi_manager.h"
+#include "system/esp_idf_compat.h"
+#include "system/esp_system_compat.h"
+#include "flow/flow_meter.h"
+#include "display/lvgl_display.h"
+#include "display/lvgl_touch.h"
+#include "mqtt/mqtt_manager.h"
+#include "ui/splashscreen.h"
+#include "wifi/wifi_manager.h"
 
 // Include mode-specific UI based on configuration
 #if TEST_MODE
     #include "test_mode_ui.h"
 #else
-    #include "screen_manager.h"
+    #include "ui/screen_manager.h"
 #endif
 
 // LVGL tick timer
@@ -157,6 +158,7 @@ void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
 
 // ESP-IDF entry point
 extern "C" void app_main() {
+    
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -185,8 +187,22 @@ extern "C" void app_main() {
     consecutive_errors = 0;
     last_error_time = 0;
     
-    ESP_LOGI(TAG_MAIN, "\n\nESP32 Touchscreen Display Firmware");
-    ESP_LOGI(TAG_MAIN, "=====================================");
+    // Log startup info with date/time if available
+    time_t now = 0;
+    struct tm timeinfo;
+    memset(&timeinfo, 0, sizeof(struct tm));
+    time(&now);
+    if (now > 0 && localtime_r(&now, &timeinfo) != NULL) {
+        ESP_LOGI(TAG_MAIN, "\n\nESP32 Touchscreen Display Firmware");
+        ESP_LOGI(TAG_MAIN, "=====================================");
+        ESP_LOGI(TAG_MAIN, "Startup time: %04d-%02d-%02d %02d:%02d:%02d",
+                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    } else {
+        ESP_LOGI(TAG_MAIN, "\n\nESP32 Touchscreen Display Firmware");
+        ESP_LOGI(TAG_MAIN, "=====================================");
+        ESP_LOGI(TAG_MAIN, "Startup time: (NTP not synced yet)");
+    }
     ESP_LOGI(TAG_MAIN, "Chip model: %s", ESP.getChipModel());
     ESP_LOGI(TAG_MAIN, "Chip revision: %d", ESP.getChipRevision());
     ESP_LOGI(TAG_MAIN, "CPU frequency: %d MHz", ESP.getCpuFreqMHz());

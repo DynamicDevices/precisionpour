@@ -36,10 +36,10 @@
         #endif
     #endif
     #ifdef CONFIG_TFT_MOSI
-        #include "esp_idf_compat.h"
+        #include "system/esp_idf_compat.h"
     #else
         // ESP-IDF but KConfig not loaded - use compat layer anyway
-        #include "esp_idf_compat.h"
+        #include "system/esp_idf_compat.h"
     #endif
     #include <stdint.h>
 #endif

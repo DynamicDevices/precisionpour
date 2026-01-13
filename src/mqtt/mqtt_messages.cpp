@@ -8,8 +8,8 @@
  */
 
 #include "config.h"
-#include "mqtt_messages.h"
-#include "mqtt_connection.h"
+#include "mqtt/mqtt_messages.h"
+#include "mqtt/mqtt_connection.h"
 
 // System/Standard library headers
 #include <esp_log.h>
@@ -19,7 +19,7 @@
 #define TAG "mqtt_msg"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Activity tracking
 static unsigned long last_activity_time = 0;
@@ -29,7 +29,7 @@ static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500m
 static void (*user_callback)(char* topic, byte* payload, unsigned int length) = NULL;
 
 // Include mqtt_connection.h for state updates
-#include "mqtt_connection.h"
+#include "mqtt/mqtt_connection.h"
 
 // ESP-IDF: MQTT event handler
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {

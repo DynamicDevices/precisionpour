@@ -18,7 +18,7 @@
 
 #ifdef ESP_PLATFORM
     // ESP-IDF framework
-    #include "esp_idf_compat.h"  // Include this first to get String typedef
+    #include "system/esp_idf_compat.h"  // Include this first to get String typedef
     #include <string>
     #include <cstring>
 #else

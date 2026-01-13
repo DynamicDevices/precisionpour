@@ -8,7 +8,7 @@
  */
 
 #include "config.h"
-#include "wifi_credentials.h"
+#include "wifi/wifi_credentials.h"
 
 // System/Standard library headers
 #include <esp_log.h>
@@ -18,7 +18,7 @@
 #define TAG "wifi_creds"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 static nvs_handle_t wifi_nvs_handle = 0;
 

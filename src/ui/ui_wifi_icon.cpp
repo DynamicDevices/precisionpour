@@ -12,7 +12,7 @@
 
 // Project headers
 #include "config.h"
-#include "ui_wifi_icon.h"
+#include "ui/ui_wifi_icon.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -22,7 +22,7 @@
 #define TAG "ui_wifi"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Static WiFi icon objects (shared across all screens)
 static lv_obj_t* wifi_container = NULL;

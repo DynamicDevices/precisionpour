@@ -10,7 +10,7 @@
 #ifndef WIFI_CREDENTIALS_H
 #define WIFI_CREDENTIALS_H
 
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 #include <string>
 #include <cstring>
 

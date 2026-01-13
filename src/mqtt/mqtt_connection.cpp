@@ -8,9 +8,9 @@
  */
 
 #include "config.h"
-#include "mqtt_connection.h"
-#include "wifi_manager.h"
-#include "mqtt_messages.h"
+#include "mqtt/mqtt_connection.h"
+#include "wifi/wifi_manager.h"
+#include "mqtt/mqtt_messages.h"
 
 // System/Standard library headers
 #include <esp_log.h>
@@ -21,7 +21,7 @@
 #define TAG "mqtt_conn"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 static esp_mqtt_client_handle_t mqtt_client_handle = NULL;
 

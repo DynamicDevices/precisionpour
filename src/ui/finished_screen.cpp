@@ -15,9 +15,8 @@
 
 // Project headers
 #include "config.h"
-#include "finished_screen.h"
-#include "base_screen.h"
-#include "screen_manager.h"
+#include "ui/finished_screen.h"
+#include "ui/base_screen.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -28,7 +27,7 @@
 #define TAG "finished"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Brand colors
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White

@@ -14,7 +14,7 @@
 
 // Project headers
 #include "config.h"
-#include "lvgl_touch.h"
+#include "display/lvgl_touch.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -23,7 +23,7 @@
 #define TAG "touch"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Arduino map() function compatibility
 static inline long map(long x, long in_min, long in_max, long out_min, long out_max) {

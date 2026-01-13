@@ -14,12 +14,12 @@
 
 // Project headers
 #include "config.h"
-#include "flow_meter.h"
+#include "flow/flow_meter.h"
 #include "images/precision_pour_logo.h"
-#include "mqtt_manager.h"
+#include "mqtt/mqtt_manager.h"
 #include "pouring_mode_ui.h"
-#include "rle_decompress.h"
-#include "wifi_manager.h"
+#include "utils/rle_decompress.h"
+#include "wifi/wifi_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -30,7 +30,7 @@
 #define TAG "pouring_ui"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // UI objects
 static lv_obj_t *logo_container = NULL;

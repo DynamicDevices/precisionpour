@@ -8,8 +8,8 @@
  */
 
 #include "config.h"
-#include "wifi_improv.h"
-#include "wifi_credentials.h"
+#include "wifi/wifi_improv.h"
+#include "wifi/wifi_credentials.h"
 
 // System/Standard library headers
 #include <esp_log.h>
@@ -20,8 +20,8 @@
 #define TAG "wifi_improv"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
-#include "esp_system_compat.h"
+#include "system/esp_idf_compat.h"
+#include "system/esp_system_compat.h"
 
 // Third-party library headers (if enabled)
 #if USE_IMPROV_WIFI

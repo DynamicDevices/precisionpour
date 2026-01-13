@@ -14,10 +14,9 @@
 
 // Project headers
 #include "config.h"
-#include "qr_code_screen.h"
-#include "ui_logo.h"
-#include "base_screen.h"
-#include "screen_manager.h"
+#include "ui/qr_code_screen.h"
+#include "ui/ui_logo.h"
+#include "ui/base_screen.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -31,7 +30,7 @@
 #define TAG "qr_screen"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // UI objects
 static lv_obj_t* qr_code = NULL;

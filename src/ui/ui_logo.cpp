@@ -12,9 +12,9 @@
 
 // Project headers
 #include "config.h"
-#include "ui_logo.h"
+#include "ui/ui_logo.h"
 #include "images/precision_pour_logo.h"
-#include "rle_decompress.h"
+#include "utils/rle_decompress.h"
 
 // System/Standard library headers
 #include <lvgl.h>

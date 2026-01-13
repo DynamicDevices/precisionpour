@@ -15,7 +15,7 @@
 // Project headers
 #include "config.h"
 #include "images/test_logo.h"
-#include "lvgl_touch.h"
+#include "display/lvgl_touch.h"
 #include "test_mode_ui.h"
 
 // System/Standard library headers
@@ -25,7 +25,7 @@
     #define TAG "test_ui"
     
     // Project compatibility headers
-    #include "esp_idf_compat.h"
+    #include "system/esp_idf_compat.h"
 #endif
 
 // UI objects

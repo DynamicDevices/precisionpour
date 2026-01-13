@@ -2,7 +2,7 @@
  * RLE (Run-Length Encoding) Decompression Implementation
  */
 
-#include "rle_decompress.h"
+#include "utils/rle_decompress.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>

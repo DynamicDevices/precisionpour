@@ -15,9 +15,9 @@
 
 // Project headers
 #include "config.h"
-#include "wifi_manager.h"
-#include "wifi_credentials.h"
-#include "wifi_improv.h"
+#include "wifi/wifi_manager.h"
+#include "wifi/wifi_credentials.h"
+#include "wifi/wifi_improv.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -27,17 +27,19 @@
 #include <esp_netif.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
+#include <esp_sntp.h>
 #include <nvs_flash.h>
 #if ENABLE_WATCHDOG
 #include <esp_task_wdt.h>
 #endif
+#include <time.h>
 #include <cstring>
 #include <string>
 #define TAG "wifi"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
-#include "esp_system_compat.h"
+#include "system/esp_idf_compat.h"
+#include "system/esp_system_compat.h"
 
 // Third-party library headers (if enabled)
 #if USE_IMPROV_WIFI
@@ -53,6 +55,59 @@ static esp_netif_t* sta_netif = NULL;
 // WiFi activity tracking (TCP/IP traffic)
 static unsigned long last_activity_time = 0;
 static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Activity visible for 500ms after last change
+
+// NTP time synchronization
+static bool ntp_initialized = false;
+
+static void initialize_ntp(void) {
+    if (ntp_initialized) {
+        return;  // Already initialized
+    }
+    
+    ESP_LOGI(TAG, "[NTP] Initializing NTP time synchronization...");
+    
+    // Configure SNTP operating mode
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    
+    // Set NTP servers (use pool.ntp.org and regional servers)
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_setservername(1, "time.nist.gov");
+    esp_sntp_setservername(2, "time.google.com");
+    
+    // Set timezone (GMT/BST for UK - adjust as needed)
+    // GMT+0 in winter, GMT+1 in summer (BST)
+    setenv("TZ", "GMT0BST,M3.5.0/1,M10.5.0", 1);
+    tzset();
+    
+    // Initialize SNTP
+    esp_sntp_init();
+    
+    ntp_initialized = true;
+    ESP_LOGI(TAG, "[NTP] NTP initialized, waiting for time sync...");
+    
+    // Wait for time to be set (with timeout)
+    int retry = 0;
+    const int retry_count = 10;
+    while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && retry < retry_count) {
+        ESP_LOGI(TAG, "[NTP] Waiting for time sync... (%d/%d)", retry + 1, retry_count);
+        delay(1000);
+        retry++;
+    }
+    
+    if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+        time_t now = 0;
+        struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        ESP_LOGI(TAG, "[NTP] Time synchronized: %04d-%02d-%02d %02d:%02d:%02d",
+                 timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                 timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        ESP_LOGI(TAG, "[NTP] Date/time will now appear in log messages");
+    } else {
+        ESP_LOGW(TAG, "[NTP] Time synchronization not completed yet (will sync in background)");
+    }
+}
 
 // IP event callback to track TCP/IP activity
 static void ip_event_activity_handler(void* arg, esp_event_base_t event_base,
@@ -81,6 +136,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                 wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*)event_data;
                 ESP_LOGW(TAG, "Disconnected from AP, reason: %d", event->reason);
                 wifi_connected = false;
+                // Reset NTP initialization flag on disconnect
+                ntp_initialized = false;
                 break;
             }
             default:
@@ -91,6 +148,20 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,
             ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
             ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
             wifi_connected = true;
+            
+            // Initialize NTP time synchronization when WiFi connects
+            initialize_ntp();
+            
+            // Log current date/time after NTP sync (if available)
+            time_t now = 0;
+            struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
+            time(&now);
+            if (now > 0 && localtime_r(&now, &timeinfo) != NULL) {
+                ESP_LOGI(TAG, "Current date/time: %04d-%02d-%02d %02d:%02d:%02d",
+                         timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+                         timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+            }
         }
     }
 }

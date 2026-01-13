@@ -6,7 +6,7 @@
  */
 
 #ifdef ESP_PLATFORM
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 #include "driver/gpio.h"
 
 // GPIO ISR handler storage

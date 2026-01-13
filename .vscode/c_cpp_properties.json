@@ -8,7 +8,6 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "/data_drive/dd/precisionpour/include",
                 "/data_drive/dd/precisionpour/src",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev-idf/ArduinoJson/src",
                 "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev-idf/lvgl",
@@ -180,12 +179,12 @@
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/rt/include",
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/spiffs/include",
                 "/home/ajlennon/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
+                "/data_drive/dd/precisionpour/include",
                 ""
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "/data_drive/dd/precisionpour/include",
                     "/data_drive/dd/precisionpour/src",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev-idf/ArduinoJson/src",
                     "/data_drive/dd/precisionpour/.pio/libdeps/esp32dev-idf/lvgl",
@@ -357,6 +356,7 @@
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/rt/include",
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/spiffs/include",
                     "/home/ajlennon/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
+                    "/data_drive/dd/precisionpour/include",
                     ""
                 ]
             },

@@ -14,11 +14,11 @@
 
 // Project headers
 #include "config.h"
-#include "screen_manager.h"
-#include "qr_code_screen.h"
-#include "pouring_screen.h"
-#include "finished_screen.h"
-#include "flow_meter.h"
+#include "ui/screen_manager.h"
+#include "ui/qr_code_screen.h"
+#include "ui/pouring_screen.h"
+#include "ui/finished_screen.h"
+#include "flow/flow_meter.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -28,7 +28,7 @@
 #define TAG "screen_mgr"
 
 // Project compatibility headers
-#include "esp_idf_compat.h"
+#include "system/esp_idf_compat.h"
 
 // Current screen state
 static ScreenState current_state = SCREEN_SPLASH;
