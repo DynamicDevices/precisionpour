@@ -54,7 +54,7 @@ void IRAM_ATTR flow_meter_isr() {
 }
 
 void flow_meter_init() {
-    ESP_LOGI(TAG, "\n=== Initializing Flow Meter ===");
+    ESP_LOGI(TAG, "=== Initializing Flow Meter ===");
     
     // Configure flow meter pin as input with pull-up
     pinMode(FLOW_METER_PIN, INPUT | INPUT_PULLUP_FLAG);

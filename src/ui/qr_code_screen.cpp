@@ -17,6 +17,7 @@
 #include "ui/qr_code_screen.h"
 #include "ui/ui_logo.h"
 #include "ui/base_screen.h"
+#include "ui/screen_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -77,7 +78,7 @@ static void get_chip_id_string(char *buffer, size_t buffer_size) {
 }
 
 void qr_code_screen_init() {
-    ESP_LOGI(TAG, "\n=== Initializing QR Code Screen ===");
+    ESP_LOGI(TAG, "=== Initializing QR Code Screen ===");
     
     // Log debug option status
     #ifdef DEBUG_QR_TAP_TO_POUR

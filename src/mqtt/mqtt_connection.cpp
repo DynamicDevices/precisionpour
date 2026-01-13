@@ -31,11 +31,12 @@ static char mqtt_subscribe_topic[128] = {0};
 static char mqtt_paid_topic[128] = {0};  // Topic for "paid" command
 static char mqtt_uri[256] = {0};  // MQTT broker URI (must persist for connection)
 static unsigned long last_reconnect_attempt = 0;
+static unsigned long last_ip_change = 0;  // Track when IP address changed (for DNS readiness)
 static bool mqtt_connected = false;
 static bool mqtt_connecting = false;  // Track if we're in the process of connecting
 
 bool mqtt_connection_init(const char* chip_id) {
-    ESP_LOGI(TAG, "\n=== Initializing MQTT Client ===");
+    ESP_LOGI(TAG, "=== Initializing MQTT Client ===");
     
     // Build client ID: prefix + chip_id
     snprintf(mqtt_client_id, sizeof(mqtt_client_id), "%s_%s", MQTT_CLIENT_ID_PREFIX, chip_id);
@@ -118,6 +119,40 @@ bool mqtt_connection_reconnect(const char* chip_id) {
         ESP_LOGW(TAG, "[MQTT] No IP address assigned, waiting for DHCP...");
         mqtt_connected = false;
         mqtt_connecting = false;
+        last_ip_change = 0;  // Reset IP change time when disconnected
+        return false;
+    }
+    
+    // Check if IP address has changed (new connection)
+    static String last_ip_str = "";
+    unsigned long now = millis();
+    if (ip != last_ip_str) {
+        // IP address changed - reset the timer
+        last_ip_str = ip;
+        last_ip_change = now;
+        ESP_LOGI(TAG, "[MQTT] New IP address: %s, waiting for DNS to be ready...", ip.c_str());
+        mqtt_connected = false;
+        mqtt_connecting = false;
+        return false;
+    }
+    
+    // Wait a bit for DNS to be ready after WiFi connection
+    // DNS resolution can fail if we try to connect too quickly after getting IP
+    if (last_ip_change == 0) {
+        // First time getting IP - record the time
+        last_ip_change = now;
+        ESP_LOGI(TAG, "[MQTT] IP address obtained, waiting for DNS to be ready...");
+        mqtt_connected = false;
+        mqtt_connecting = false;
+        return false;
+    }
+    
+    unsigned long time_since_ip = now - last_ip_change;
+    if (time_since_ip < 3000) {
+        // Wait at least 3 seconds after IP assignment for DNS to be ready
+        ESP_LOGI(TAG, "[MQTT] Waiting for DNS to be ready... (%lu ms since IP)", time_since_ip);
+        mqtt_connected = false;
+        mqtt_connecting = false;
         return false;
     }
     
@@ -186,7 +221,10 @@ void mqtt_connection_loop() {
             const char* chip_id = strstr(mqtt_client_id, "_");
             if (chip_id != NULL) {
                 chip_id++;  // Skip the underscore
-                mqtt_connection_reconnect(chip_id);
+                // Only attempt reconnect if we have a valid chip ID
+                if (strlen(chip_id) > 0) {
+                    mqtt_connection_reconnect(chip_id);
+                }
             }
         }
     }

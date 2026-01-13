@@ -170,17 +170,46 @@ extern "C" void app_main() {
     // Initialize serial communication (UART for ESP-IDF)
     // Serial logging is handled by ESP_LOG
     
+    // Initialize GPIO ISR service early (before touch/flow meter use it)
+    // Temporarily suppress ESP-IDF error logging to avoid "already installed" errors
+    // (ESP-IDF logs errors internally before returning error codes)
+    esp_log_level_set("gpio", ESP_LOG_WARN);
+    
+    esp_err_t gpio_isr_ret = gpio_install_isr_service(0);
+    
+    // Restore normal log level
+    esp_log_level_set("gpio", ESP_LOG_ERROR);
+    
+    if (gpio_isr_ret != ESP_OK && gpio_isr_ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG_MAIN, "[Setup] GPIO ISR service initialization returned: %s", esp_err_to_name(gpio_isr_ret));
+    }
+    
     // Initialize watchdog timer if enabled
     #if ENABLE_WATCHDOG
+    // Temporarily suppress ESP-IDF error logging for watchdog init
+    // (ESP-IDF logs errors internally before returning error codes)
+    esp_log_level_set("task_wdt", ESP_LOG_WARN);
+    
     esp_task_wdt_config_t wdt_config = {
         .timeout_ms = WATCHDOG_TIMEOUT_SEC * 1000,
         .idle_core_mask = 0,
         .trigger_panic = true
     };
-    esp_task_wdt_init(&wdt_config);
+    esp_err_t wdt_ret = esp_task_wdt_init(&wdt_config);
+    
+    // Restore normal log level
+    esp_log_level_set("task_wdt", ESP_LOG_ERROR);
+    
+    if (wdt_ret == ESP_OK) {
+        ESP_LOGI(TAG_MAIN, "[Setup] Watchdog enabled (%d second timeout)", WATCHDOG_TIMEOUT_SEC);
+    } else if (wdt_ret == ESP_ERR_INVALID_STATE) {
+        // Watchdog already initialized (e.g., by ESP-IDF bootloader or another component)
+        ESP_LOGI(TAG_MAIN, "[Setup] Watchdog already initialized, using existing instance");
+    } else {
+        ESP_LOGW(TAG_MAIN, "[Setup] Watchdog initialization returned: %s", esp_err_to_name(wdt_ret));
+    }
     // Don't add app_main to watchdog - it will exit quickly
     // The main loop task will be added after it's created
-    ESP_LOGI(TAG_MAIN, "[Setup] Watchdog enabled (%d second timeout)", WATCHDOG_TIMEOUT_SEC);
     #endif
     
     // Initialize error tracking
@@ -193,13 +222,13 @@ extern "C" void app_main() {
     memset(&timeinfo, 0, sizeof(struct tm));
     time(&now);
     if (now > 0 && localtime_r(&now, &timeinfo) != NULL) {
-        ESP_LOGI(TAG_MAIN, "\n\nESP32 Touchscreen Display Firmware");
+        ESP_LOGI(TAG_MAIN, "ESP32 Touchscreen Display Firmware");
         ESP_LOGI(TAG_MAIN, "=====================================");
         ESP_LOGI(TAG_MAIN, "Startup time: %04d-%02d-%02d %02d:%02d:%02d",
                  timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
                  timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     } else {
-        ESP_LOGI(TAG_MAIN, "\n\nESP32 Touchscreen Display Firmware");
+        ESP_LOGI(TAG_MAIN, "ESP32 Touchscreen Display Firmware");
         ESP_LOGI(TAG_MAIN, "=====================================");
         ESP_LOGI(TAG_MAIN, "Startup time: (NTP not synced yet)");
     }
@@ -293,7 +322,7 @@ extern "C" void app_main() {
     delay(5);
     
     // Now initialize main UI (this will create the UI on clean screen)
-    ESP_LOGI(TAG_MAIN, "\n[Setup] About to initialize UI...");
+    ESP_LOGI(TAG_MAIN, "[Setup] About to initialize UI...");
     #if TEST_MODE
         ESP_LOGI(TAG_MAIN, "[Setup] Initializing test mode UI...");
         test_mode_init();
@@ -307,27 +336,44 @@ extern "C" void app_main() {
     
     // Finalize (100% - just for logging, splashscreen is already gone)
     ESP_LOGI(TAG_MAIN, "[Setup] Setup sequence complete!");
-    ESP_LOGI(TAG_MAIN, "\n========================================");
+    ESP_LOGI(TAG_MAIN, "========================================");
     ESP_LOGI(TAG_MAIN, "SETUP COMPLETE!");
     ESP_LOGI(TAG_MAIN, "========================================");
     
     // Initialize WiFi connection
-    ESP_LOGI(TAG_MAIN, "\n[Setup] Initializing WiFi...");
-    bool wifi_ok = wifi_manager_init();
-    if (wifi_ok) {
-        ESP_LOGI(TAG_MAIN, "[Setup] WiFi initialized successfully");
-        
-        // Wait a bit for DNS to be ready after WiFi connection
-        ESP_LOGI(TAG_MAIN, "[Setup] Waiting for network stack to be ready...");
-        delay(2000);  // 2 second delay for DNS/DHCP to stabilize
-        
-        // Verify WiFi is still connected
-        if (!wifi_manager_is_connected()) {
-            ESP_LOGW(TAG_MAIN, "[Setup] WiFi disconnected after delay, will retry MQTT in loop");
-            wifi_ok = false;
-        }
-    } else {
+    ESP_LOGI(TAG_MAIN, "[Setup] Initializing WiFi...");
+    bool wifi_init_ok = wifi_manager_init();
+    if (!wifi_init_ok) {
         ESP_LOGW(TAG_MAIN, "[Setup] WiFi initialization failed, will retry in loop");
+    }
+    
+    // Wait for WiFi to actually connect and get IP address
+    // WiFi connection happens asynchronously via events, so we need to wait
+    ESP_LOGI(TAG_MAIN, "[Setup] Waiting for WiFi connection and IP assignment...");
+    unsigned long wifi_wait_start = millis();
+    const unsigned long wifi_wait_timeout = 30000;  // 30 second timeout
+    bool wifi_connected = false;
+    bool ip_assigned = false;
+    
+    while ((millis() - wifi_wait_start) < wifi_wait_timeout) {
+        if (wifi_manager_is_connected()) {
+            wifi_connected = true;
+            String ip = wifi_manager_get_ip();
+            if (!ip.empty() && ip != "Not connected") {
+                ip_assigned = true;
+                ESP_LOGI(TAG_MAIN, "[Setup] WiFi connected with IP: %s", ip.c_str());
+                break;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(500));  // Check every 500ms
+    }
+    
+    if (!wifi_connected || !ip_assigned) {
+        ESP_LOGW(TAG_MAIN, "[Setup] WiFi not connected or IP not assigned yet, MQTT will initialize in main loop");
+    } else {
+        // Wait additional time for DNS to be ready after IP assignment
+        ESP_LOGI(TAG_MAIN, "[Setup] Waiting for DNS to be ready...");
+        vTaskDelay(pdMS_TO_TICKS(3000));  // 3 second delay for DNS to be ready
     }
     
     // Get chip ID for MQTT using SOC UID (unique chip identifier)
@@ -339,9 +385,9 @@ extern "C" void app_main() {
         chip_id[0] = '\0';  // Ensure it's empty on failure
     }
     
-    // Initialize MQTT client (only if WiFi is connected and stable)
-    if (wifi_ok && wifi_manager_is_connected() && strlen(chip_id) > 0) {
-        ESP_LOGI(TAG_MAIN, "\n[Setup] Initializing MQTT...");
+    // Initialize MQTT client (only if WiFi is connected, IP assigned, and chip ID available)
+    if (wifi_connected && ip_assigned && strlen(chip_id) > 0) {
+        ESP_LOGI(TAG_MAIN, "[Setup] Initializing MQTT...");
         #if !TEST_MODE
             // Set MQTT message callback for screen switching
             mqtt_client_set_callback(on_mqtt_message);
@@ -353,7 +399,13 @@ extern "C" void app_main() {
             ESP_LOGW(TAG_MAIN, "[Setup] MQTT initialization failed, will retry in loop");
         }
     } else {
-        ESP_LOGW(TAG_MAIN, "[Setup] Skipping MQTT initialization (WiFi not connected or chip ID unavailable)");
+        if (!wifi_connected) {
+            ESP_LOGI(TAG_MAIN, "[Setup] Skipping MQTT initialization (WiFi not connected yet)");
+        } else if (!ip_assigned) {
+            ESP_LOGI(TAG_MAIN, "[Setup] Skipping MQTT initialization (IP address not assigned yet)");
+        } else {
+            ESP_LOGW(TAG_MAIN, "[Setup] Skipping MQTT initialization (chip ID unavailable)");
+        }
     }
     #if TEST_MODE
         ESP_LOGI(TAG_MAIN, "Running in TEST MODE");

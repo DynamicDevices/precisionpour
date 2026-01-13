@@ -33,6 +33,7 @@
 #include <esp_task_wdt.h>
 #endif
 #include <time.h>
+#include <sys/time.h>  // For struct timeval
 #include <cstring>
 #include <string>
 #define TAG "wifi"
@@ -59,6 +60,22 @@ static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Activity visible for 5
 // NTP time synchronization
 static bool ntp_initialized = false;
 
+// NTP sync notification callback - called when time synchronization completes
+static void ntp_sync_time_cb(struct timeval *tv) {
+    ESP_LOGI(TAG, "[NTP] *** Time synchronization completed ***");
+    
+    // Get and log the synchronized time
+    time_t now = tv->tv_sec;
+    struct tm timeinfo;
+    memset(&timeinfo, 0, sizeof(struct tm));
+    localtime_r(&now, &timeinfo);
+    
+    ESP_LOGI(TAG, "[NTP] Synchronized time: %04d-%02d-%02d %02d:%02d:%02d",
+             timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+             timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    ESP_LOGI(TAG, "[NTP] Date/time will now appear in log messages");
+}
+
 static void initialize_ntp(void) {
     if (ntp_initialized) {
         return;  // Already initialized
@@ -79,6 +96,9 @@ static void initialize_ntp(void) {
     setenv("TZ", "GMT0BST,M3.5.0/1,M10.5.0", 1);
     tzset();
     
+    // Register callback for when time synchronization completes
+    esp_sntp_set_time_sync_notification_cb(ntp_sync_time_cb);
+    
     // Initialize SNTP
     esp_sntp_init();
     
@@ -95,6 +115,8 @@ static void initialize_ntp(void) {
     }
     
     if (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
+        // Sync completed during initial wait - callback will also be called
+        // but we log here too for immediate feedback
         time_t now = 0;
         struct tm timeinfo;
         memset(&timeinfo, 0, sizeof(struct tm));
@@ -103,9 +125,11 @@ static void initialize_ntp(void) {
         ESP_LOGI(TAG, "[NTP] Time synchronized: %04d-%02d-%02d %02d:%02d:%02d",
                  timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
                  timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-        ESP_LOGI(TAG, "[NTP] Date/time will now appear in log messages");
     } else {
-        ESP_LOGW(TAG, "[NTP] Time synchronization not completed yet (will sync in background)");
+        // Sync not completed yet - callback will log when it completes
+        // Don't log as warning since this is expected behavior
+        ESP_LOGI(TAG, "[NTP] Time synchronization in progress (will sync in background)");
+        ESP_LOGI(TAG, "[NTP] A log message will appear when sync completes");
     }
 }
 
@@ -206,8 +230,9 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
     unsigned long start_time = millis();
     unsigned long timeout = 30000; // 30 second timeout
     
-    // Set WiFi component log level to INFO
-    esp_log_level_set("wifi", ESP_LOG_INFO);
+    // Set WiFi component log level to WARN to reduce verbose output
+    // (INFO level can produce empty log lines in some ESP-IDF versions)
+    esp_log_level_set("wifi", ESP_LOG_WARN);
     
     while (!wifi_connected && (millis() - start_time) < timeout) {
         vTaskDelay(pdMS_TO_TICKS(500));
@@ -244,10 +269,11 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
 }
 
 bool wifi_manager_init() {
-    ESP_LOGI(TAG, "\n=== Initializing WiFi ===");
+    ESP_LOGI(TAG, "=== Initializing WiFi ===");
     
-    // Set WiFi component log level to INFO
-    esp_log_level_set("wifi", ESP_LOG_INFO);
+    // Set WiFi component log level to WARN to reduce verbose output
+    // (INFO level can produce empty log lines in some ESP-IDF versions)
+    esp_log_level_set("wifi", ESP_LOG_WARN);
     
     // ESP-IDF: Initialize WiFi
     ESP_ERROR_CHECK(esp_netif_init());
@@ -262,8 +288,9 @@ bool wifi_manager_init() {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     
-    // Set WiFi component log level to INFO
-    esp_log_level_set("wifi", ESP_LOG_INFO);
+    // Set WiFi component log level to WARN to reduce verbose output
+    // (INFO level can produce empty log lines in some ESP-IDF versions)
+    esp_log_level_set("wifi", ESP_LOG_WARN);
     
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,

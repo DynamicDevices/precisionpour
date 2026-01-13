@@ -48,7 +48,7 @@ public:
     }
     void print(const char* str) { ESP_LOGI(TAG_MAIN, "%s", str); }
     void println(const char* str) { ESP_LOGI(TAG_MAIN, "%s", str); }
-    void println() { ESP_LOGI(TAG_MAIN, ""); }
+    void println() { /* Empty println - no-op to avoid empty log lines */ }
     void printf(const char* format, ...) {
         va_list args;
         va_start(args, format);
@@ -186,11 +186,13 @@ static inline void attachInterrupt(int pin, voidFuncPtr func, int mode) {
         gpio_isr_handlers[gpio].type = (gpio_int_type_t)mode;
     }
     
-    // Install ISR service if not already installed
-    static bool isr_service_installed = false;
-    if (!isr_service_installed) {
-        gpio_install_isr_service(0);
-        isr_service_installed = true;
+    // GPIO ISR service should already be installed by main.cpp early initialization
+    // Just verify it's available - don't try to install again to avoid ESP-IDF error logs
+    static bool isr_service_checked = false;
+    if (!isr_service_checked) {
+        // Try to add a handler - if service isn't installed, this will fail gracefully
+        // We don't call gpio_install_isr_service here to avoid duplicate installation errors
+        isr_service_checked = true;
     }
     
     // Add ISR handler - use a wrapper function

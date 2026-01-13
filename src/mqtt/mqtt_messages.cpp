@@ -60,7 +60,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         }
             
         case MQTT_EVENT_DISCONNECTED:
-            ESP_LOGW(TAG, "MQTT Disconnected");
+            // Only log as warning if we were previously connected
+            // If we were never connected, this is expected during initial connection attempts
+            if (mqtt_connection_is_connected()) {
+                ESP_LOGW(TAG, "MQTT Disconnected");
+            } else {
+                ESP_LOGI(TAG, "MQTT Disconnected (not yet connected)");
+            }
             mqtt_connection_set_connected(false);
             mqtt_connection_set_connecting(false);  // No longer connecting
             break;
@@ -109,10 +115,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
         }
         
-        case MQTT_EVENT_ERROR:
+        case MQTT_EVENT_ERROR: {
             ESP_LOGE(TAG, "MQTT error");
             mqtt_connection_set_connected(false);
+            mqtt_connection_set_connecting(false);  // No longer connecting on error
+            
+            // Log error details if available
+            if (event->error_handle) {
+                ESP_LOGE(TAG, "Error type: %d, error code: %d", 
+                         event->error_handle->error_type,
+                         event->error_handle->connect_return_code);
+            }
             break;
+        }
             
         default:
             break;

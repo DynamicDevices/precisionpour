@@ -17,6 +17,7 @@
 #include "config.h"
 #include "ui/pouring_screen.h"
 #include "ui/base_screen.h"
+#include "ui/screen_manager.h"
 #include "flow/flow_meter.h"
 
 // System/Standard library headers
@@ -61,7 +62,7 @@ static bool pouring_screen_active = false;
 static void pouring_screen_touch_cb(lv_event_t *e);
 
 void pouring_screen_init() {
-    ESP_LOGI(TAG, "\n=== Initializing Pouring Screen ===");
+    ESP_LOGI(TAG, "=== Initializing Pouring Screen ===");
     
     // Log debug option status
     #ifdef DEBUG_POURING_TAP_TO_FINISHED

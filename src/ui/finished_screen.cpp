@@ -17,6 +17,7 @@
 #include "config.h"
 #include "ui/finished_screen.h"
 #include "ui/base_screen.h"
+#include "ui/screen_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -52,7 +53,7 @@ static bool finished_screen_active = false;
 static void finished_screen_touch_cb(lv_event_t *e);
 
 void finished_screen_init(float final_volume_ml, float final_cost, const char* currency) {
-    ESP_LOGI(TAG, "\n=== Initializing Finished Screen ===");
+    ESP_LOGI(TAG, "=== Initializing Finished Screen ===");
     
     // Log debug option status
     #ifdef DEBUG_FINISHED_TAP_TO_QR

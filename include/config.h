@@ -99,9 +99,23 @@
     #define ERROR_RESET_DELAY_MS CONFIG_ERROR_RESET_DELAY_MS
     
     // Development Options
-    #define DEBUG_QR_TAP_TO_POUR CONFIG_DEBUG_QR_TAP_TO_POUR
-    #define DEBUG_POURING_TAP_TO_FINISHED CONFIG_DEBUG_POURING_TAP_TO_FINISHED
-    #define DEBUG_FINISHED_TAP_TO_QR CONFIG_DEBUG_FINISHED_TAP_TO_QR
+    #ifdef CONFIG_DEBUG_QR_TAP_TO_POUR
+        #define DEBUG_QR_TAP_TO_POUR CONFIG_DEBUG_QR_TAP_TO_POUR
+    #else
+        #define DEBUG_QR_TAP_TO_POUR 0
+    #endif
+    
+    #ifdef CONFIG_DEBUG_POURING_TAP_TO_FINISHED
+        #define DEBUG_POURING_TAP_TO_FINISHED CONFIG_DEBUG_POURING_TAP_TO_FINISHED
+    #else
+        #define DEBUG_POURING_TAP_TO_FINISHED 0
+    #endif
+    
+    #ifdef CONFIG_DEBUG_FINISHED_TAP_TO_QR
+        #define DEBUG_FINISHED_TAP_TO_QR CONFIG_DEBUG_FINISHED_TAP_TO_QR
+    #else
+        #define DEBUG_FINISHED_TAP_TO_QR 0
+    #endif
     
     // Note: CONFIG_COST_PER_UNIT_DEFAULT is a string in KConfig
     // We'll need to parse it at runtime where it's used, or use a helper function
@@ -110,7 +124,11 @@
     // Default numeric value (will be parsed from string at runtime if needed)
     #define COST_PER_UNIT_DEFAULT 5.00  // Fallback, actual value from CONFIG_COST_PER_UNIT_DEFAULT
     #define CURRENCY_SYMBOL CONFIG_CURRENCY_SYMBOL
-    #define FINISHED_SCREEN_TIMEOUT_SEC CONFIG_FINISHED_SCREEN_TIMEOUT_SEC
+    #ifdef CONFIG_FINISHED_SCREEN_TIMEOUT_SEC
+        #define FINISHED_SCREEN_TIMEOUT_SEC CONFIG_FINISHED_SCREEN_TIMEOUT_SEC
+    #else
+        #define FINISHED_SCREEN_TIMEOUT_SEC 5  // Default fallback
+    #endif
     
     
 #else
