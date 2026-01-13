@@ -165,6 +165,9 @@ bool finished_screen_update() {
 }
 
 void finished_screen_cleanup() {
+    // Set inactive first to prevent updates during cleanup
+    finished_screen_active = false;
+    
     // Clean up labels
     if (message_label != NULL) {
         lv_obj_del(message_label);
@@ -198,8 +201,6 @@ void finished_screen_cleanup() {
     
     // Clean up base screen (content area only, shared components persist)
     base_screen_cleanup();
-    
-    finished_screen_active = false;
     
     ESP_LOGI(TAG, "[Finished Screen] Finished Screen cleaned up");
 }

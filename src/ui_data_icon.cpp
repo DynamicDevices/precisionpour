@@ -41,9 +41,20 @@ static unsigned long last_flash_toggle = 0;
 static const unsigned long FLASH_INTERVAL_MS = 200;  // Flash every 200ms (5 times per second)
 
 lv_obj_t* ui_data_icon_create(lv_obj_t* parent) {
+    // Check if data icon exists and is still valid (has a valid parent)
     if (data_container != NULL) {
-        ESP_LOGW(TAG, "[Data Icon] Data icon already exists, returning existing container");
-        return data_container;
+        lv_obj_t* current_parent = lv_obj_get_parent(data_container);
+        // Check if parent exists and matches the expected parent
+        if (current_parent != NULL && current_parent == parent) {
+            ESP_LOGI(TAG, "[Data Icon] Data icon already exists and is valid, returning existing container");
+            return data_container;
+        }
+        // Data icon was deleted (parent cleaned), reset state
+        ESP_LOGW(TAG, "[Data Icon] Data icon exists but parent changed, resetting state");
+        data_container = NULL;
+        data_spark1 = NULL;
+        data_spark2 = NULL;
+        data_spark3 = NULL;
     }
     
     if (parent == NULL) {
@@ -95,7 +106,8 @@ lv_obj_t* ui_data_icon_create(lv_obj_t* parent) {
     lv_obj_set_style_radius(data_spark3, 1, 0);
     lv_obj_align(data_spark3, LV_ALIGN_RIGHT_MID, -4, 0);
     
-    lv_timer_handler();
+    // Don't call lv_timer_handler() during object creation to avoid dirty area errors
+    // The main loop will handle LVGL updates
     
     ESP_LOGI(TAG, "[Data Icon] Shared data icon component created successfully");
     return data_container;
@@ -116,6 +128,18 @@ void ui_data_icon_update(bool connected, bool active) {
     if (data_container == NULL || data_spark1 == NULL || 
         data_spark2 == NULL || data_spark3 == NULL) {
         return;  // Icon not created yet
+    }
+    
+    // Check if container is still valid (has a valid parent)
+    lv_obj_t* parent = lv_obj_get_parent(data_container);
+    if (parent == NULL) {
+        // Icon was deleted, reset state
+        ESP_LOGW(TAG, "[Data Icon] Icon was deleted, resetting state");
+        data_container = NULL;
+        data_spark1 = NULL;
+        data_spark2 = NULL;
+        data_spark3 = NULL;
+        return;
     }
     
     unsigned long now = millis();

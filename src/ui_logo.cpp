@@ -28,9 +28,18 @@ static lv_obj_t* logo_obj = NULL;
 static lv_obj_t* logo_container = NULL;
 
 lv_obj_t* ui_logo_create(lv_obj_t* parent) {
-    if (logo_obj != NULL) {
-        ESP_LOGW(TAG, "[Logo] Logo already exists, returning existing object");
-        return logo_obj;
+    // Check if logo exists and is still valid (has a valid parent)
+    if (logo_obj != NULL && logo_container != NULL) {
+        lv_obj_t* current_parent = lv_obj_get_parent(logo_container);
+        // Check if parent exists and matches the expected parent
+        if (current_parent != NULL && current_parent == parent) {
+            ESP_LOGI(TAG, "[Logo] Logo already exists and is valid, returning existing object");
+            return logo_obj;
+        }
+        // Logo was deleted (parent cleaned), reset state
+        ESP_LOGW(TAG, "[Logo] Logo object exists but parent changed, resetting state");
+        logo_obj = NULL;
+        logo_container = NULL;
     }
     
     if (parent == NULL) {
@@ -85,9 +94,8 @@ lv_obj_t* ui_logo_create(lv_obj_t* parent) {
     // Center the logo in the container
     lv_obj_align(logo_obj, LV_ALIGN_CENTER, 0, 0);
     
-    // Force refresh
+    // Invalidate to mark for redraw (but don't call lv_timer_handler() here)
     lv_obj_invalidate(logo_obj);
-    lv_timer_handler();
     
     ESP_LOGI(TAG, "[Logo] Shared logo component created successfully");
     return logo_obj;

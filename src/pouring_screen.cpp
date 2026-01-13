@@ -54,11 +54,16 @@ static char currency_symbol[8] = {0};
 // Callback function to switch back to QR code screen
 static void (*screen_switch_callback)(void) = NULL;
 
+// Screen active state
+static bool pouring_screen_active = false;
+
 // Forward declaration
 static void pouring_screen_touch_cb(lv_event_t *e);
 
 void pouring_screen_init() {
     ESP_LOGI(TAG, "\n=== Initializing Pouring Screen ===");
+    
+    pouring_screen_active = true;
     
     // Create base screen layout (logo, WiFi icon, data icon)
     lv_obj_t* content_area = base_screen_create(lv_scr_act());
@@ -170,6 +175,11 @@ static void pouring_screen_touch_cb(lv_event_t *e) {
 }
 
 void pouring_screen_update() {
+    // Only update if screen is active
+    if (!pouring_screen_active) {
+        return;
+    }
+    
     // Update base screen (WiFi and data icons)
     base_screen_update();
     
@@ -286,6 +296,9 @@ float pouring_screen_get_cost_per_ml() {
 }
 
 void pouring_screen_cleanup() {
+    // Set inactive first to prevent updates during cleanup
+    pouring_screen_active = false;
+    
     // Clean up labels
     if (flow_rate_label != NULL) {
         lv_obj_del(flow_rate_label);
@@ -329,6 +342,8 @@ void pouring_screen_cleanup() {
     
     // Clean up base screen (content area only, shared components persist)
     base_screen_cleanup();
+    
+    pouring_screen_active = false;
     
     ESP_LOGI(TAG, "[Pouring Screen] Pouring Screen cleaned up");
 }

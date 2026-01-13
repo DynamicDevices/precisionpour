@@ -33,6 +33,7 @@
 #include <esp_task_wdt.h>
 #endif
 #define TAG_MAIN "main"
+#define TAG_MQTT "mqtt"
 
 // Third-party library headers
 #include <ArduinoJson.h>
@@ -51,8 +52,7 @@
 #if TEST_MODE
     #include "test_mode_ui.h"
 #else
-    #include "production_mode_ui.h"
-    #include "pouring_mode_ui.h"
+    #include "screen_manager.h"
 #endif
 
 // LVGL tick timer
@@ -64,14 +64,7 @@ static portMUX_TYPE lvgl_timer_mux = portMUX_INITIALIZER_UNLOCKED;
 static unsigned int consecutive_errors = 0;
 static unsigned long last_error_time = 0;
 
-// Screen state (production mode only)
-#if !TEST_MODE
-enum ScreenState {
-    SCREEN_PRODUCTION,  // Default: QR code and payment screen
-    SCREEN_POURING      // Active pouring: flow rate and cost screen
-};
-static ScreenState current_screen = SCREEN_PRODUCTION;
-#endif
+// Screen state is now managed by screen_manager
 
 // LVGL tick handler (called by timer)
 // ESP-IDF: Timer callback runs in task context (not ISR), so use portENTER_CRITICAL
@@ -82,9 +75,6 @@ void lvgl_tick_handler(void* arg) {
 }
 
 #if !TEST_MODE
-// Forward declaration
-static void switch_to_production_screen();
-
 // MQTT message handler for screen switching and commands
 void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
     // Null-terminate the payload
@@ -149,14 +139,8 @@ void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
                 ESP_LOGI(TAG_MQTT, "  Currency: %s", currency);
             }
             
-            // Start pouring with these parameters
-            if (current_screen != SCREEN_POURING) {
-                current_screen = SCREEN_POURING;
-                pouring_mode_start_pour(unique_id, cost_per_ml, max_ml, currency);
-            } else {
-                // Update existing pour parameters
-                pouring_mode_update_pour_params(unique_id, cost_per_ml, max_ml, currency);
-            }
+            // Start pouring with these parameters using screen manager
+            screen_manager_show_pouring(unique_id, cost_per_ml, max_ml, currency);
         } else {
             ESP_LOGW(TAG_MQTT, "[MQTT] Invalid paid command - validation failed");
             consecutive_errors++;
@@ -166,56 +150,8 @@ void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
     }
     
     // Handle other commands on the general commands topic
-    // Parse JSON-like commands (simple string matching for now)
-    // Expected commands:
-    // - "start_pour" or "{\"action\":\"start_pour\"}" - Switch to pouring screen
-    // - "stop_pour" or "{\"action\":\"stop_pour\"}" - Switch back to production screen
-    // - "cost:X.XX" or "{\"cost\":X.XX}" - Update cost per unit
-    
-    if (strstr(message, "start_pour") != NULL || strstr(message, "\"start_pour\"") != NULL) {
-        ESP_LOGI(TAG_MQTT, "[MQTT] Switching to pouring screen...");
-        if (current_screen != SCREEN_POURING) {
-            current_screen = SCREEN_POURING;
-            pouring_mode_reset();  // Reset volume counter for new pour
-            pouring_mode_init();    // Initialize pouring screen
-        }
-    } else if (strstr(message, "stop_pour") != NULL || strstr(message, "\"stop_pour\"") != NULL) {
-        ESP_LOGI(TAG_MQTT, "[MQTT] Switching to production screen...");
-        if (current_screen != SCREEN_PRODUCTION) {
-            current_screen = SCREEN_PRODUCTION;
-            production_mode_init();  // Re-initialize production screen
-        }
-    } else if (strstr(message, "cost:") != NULL) {
-        // Extract cost value (format: "cost:5.50")
-        float cost = atof(strstr(message, "cost:") + 5);
-        if (cost > 0) {
-            ESP_LOGI(TAG_MQTT, "[MQTT] Updating cost per unit to: £%.2f", cost);
-            pouring_mode_set_cost_per_unit(cost);
-        }
-    } else if (strstr(message, "\"cost\"") != NULL) {
-        // Extract cost from JSON (format: {"cost":5.50})
-        // Simple extraction - look for number after "cost"
-        char* cost_start = strstr(message, "\"cost\"");
-        if (cost_start != NULL) {
-            char* colon = strchr(cost_start, ':');
-            if (colon != NULL) {
-                float cost = atof(colon + 1);
-                if (cost > 0) {
-                    ESP_LOGI(TAG_MQTT, "[MQTT] Updating cost per unit to: £%.2f", cost);
-                    pouring_mode_set_cost_per_unit(cost);
-                }
-            }
-        }
-    }
-}
-
-// Callback function to switch back to production screen (called from pouring screen touch)
-static void switch_to_production_screen() {
-    if (current_screen != SCREEN_PRODUCTION) {
-        current_screen = SCREEN_PRODUCTION;
-        production_mode_init();  // Re-initialize production screen
-        ESP_LOGI(TAG_MAIN, "[Main] Switched back to production screen");
-    }
+    // Note: Most commands are now handled by screen_manager
+    // Legacy commands can be added here if needed
 }
 #endif
 
@@ -347,12 +283,10 @@ extern "C" void app_main() {
         test_mode_init();
         ESP_LOGI(TAG_MAIN, "[Setup] Test mode UI initialized - DONE");
     #else
-        ESP_LOGI(TAG_MAIN, "[Setup] Initializing production mode UI...");
-        production_mode_init();
-        ESP_LOGI(TAG_MAIN, "[Setup] Production mode UI initialized - DONE");
-        
-        // Set up callback for pouring screen to switch back to production screen
-        pouring_mode_set_screen_switch_callback(switch_to_production_screen);
+        ESP_LOGI(TAG_MAIN, "[Setup] Initializing screen manager...");
+        screen_manager_init();
+        screen_manager_show_qr_code();  // Show QR code screen after splash
+        ESP_LOGI(TAG_MAIN, "[Setup] Screen manager initialized - DONE");
     #endif
     
     // Finalize (100% - just for logging, splashscreen is already gone)
@@ -477,12 +411,8 @@ void loop_body() {
     #if TEST_MODE
         test_mode_update();
     #else
-        // Update the currently active screen
-        if (current_screen == SCREEN_PRODUCTION) {
-            production_mode_update();
-        } else if (current_screen == SCREEN_POURING) {
-            pouring_mode_update();
-        }
+        // Update screen manager (handles all screen updates and transitions)
+        screen_manager_update();
     #endif
     
     // Touch controller is handled by LVGL touch driver

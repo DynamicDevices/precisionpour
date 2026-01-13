@@ -49,15 +49,15 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
     // Set background color (pure black)
     lv_obj_set_style_bg_color(parent, lv_color_hex(0x000000), 0);
     lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
-    lv_timer_handler();
-    delay(5);
     
-    // Clear screen
+    // Clear screen - this deletes all children, so shared components will be recreated
     lv_obj_clean(parent);
     lv_obj_set_style_bg_color(parent, lv_color_hex(0x000000), 0);
     lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
-    lv_timer_handler();
-    delay(5);
+    
+    // Wait for LVGL to finish processing the cleanup
+    // Don't call lv_timer_handler() during object creation to avoid dirty area errors
+    delay(20);
     
     // Create shared logo (top center) - create first so it's behind other elements
     if (ui_logo_create(parent) == NULL) {
@@ -105,8 +105,9 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
         return NULL;
     }
     
-    lv_timer_handler();
-    delay(10);
+    // Process all pending LVGL operations after creating all objects
+    // Use delay instead of lv_timer_handler() to avoid dirty area errors
+    delay(20);
     
     ESP_LOGI(TAG, "[Base Screen] Base screen layout created successfully");
     return content_area;

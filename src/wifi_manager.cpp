@@ -50,6 +50,20 @@ static bool wifi_connected = false;
 static unsigned long last_reconnect_attempt = 0;
 static esp_netif_t* sta_netif = NULL;
 
+// WiFi activity tracking (TCP/IP traffic)
+static unsigned long last_activity_time = 0;
+static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Activity visible for 500ms after last change
+
+// IP event callback to track TCP/IP activity
+static void ip_event_activity_handler(void* arg, esp_event_base_t event_base,
+                                      int32_t event_id, void* event_data) {
+    // Track activity when IP events occur (indicates TCP/IP traffic)
+    if (event_base == IP_EVENT) {
+        // Any IP event indicates network activity
+        last_activity_time = millis();
+    }
+}
+
 // WiFi event handler
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data) {
@@ -188,6 +202,14 @@ bool wifi_manager_init() {
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                         IP_EVENT_STA_GOT_IP,
                                                         &wifi_event_handler,
+                                                        NULL,
+                                                        NULL));
+    
+    // Register IP event handler for TCP/IP activity tracking
+    // This will track all IP events (not just GOT_IP) to detect TCP/IP traffic
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &ip_event_activity_handler,
                                                         NULL,
                                                         NULL));
     
@@ -365,4 +387,20 @@ int wifi_manager_get_rssi() {
         }
     }
     return -100;  // Return very weak signal when not connected
+}
+
+bool wifi_manager_has_activity() {
+    if (!wifi_manager_is_connected()) {
+        return false;
+    }
+    
+    unsigned long now = millis();
+    
+    // Check if activity was detected recently (within timeout window)
+    // The activity is tracked via IP event callbacks which fire on TCP/IP traffic
+    if (last_activity_time > 0 && (now - last_activity_time) < ACTIVITY_TIMEOUT_MS) {
+        return true;
+    }
+    
+    return false;
 }

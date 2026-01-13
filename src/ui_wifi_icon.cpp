@@ -38,9 +38,21 @@ static const unsigned long WIFI_FLASH_INTERVAL_MS = 2500;  // 2500ms on, 2500ms 
 static bool wifi_flash_state = false;  // Current flash state (true = visible, false = hidden)
 
 lv_obj_t* ui_wifi_icon_create(lv_obj_t* parent) {
+    // Check if WiFi icon exists and is still valid (has a valid parent)
     if (wifi_container != NULL) {
-        ESP_LOGW(TAG, "[WiFi Icon] WiFi icon already exists, returning existing container");
-        return wifi_container;
+        lv_obj_t* current_parent = lv_obj_get_parent(wifi_container);
+        // Check if parent exists and matches the expected parent
+        if (current_parent != NULL && current_parent == parent) {
+            ESP_LOGI(TAG, "[WiFi Icon] WiFi icon already exists and is valid, returning existing container");
+            return wifi_container;
+        }
+        // WiFi icon was deleted (parent cleaned), reset state
+        ESP_LOGW(TAG, "[WiFi Icon] WiFi icon exists but parent changed, resetting state");
+        wifi_container = NULL;
+        wifi_bar1 = NULL;
+        wifi_bar2 = NULL;
+        wifi_bar3 = NULL;
+        wifi_bar4 = NULL;
     }
     
     if (parent == NULL) {
@@ -101,7 +113,8 @@ lv_obj_t* ui_wifi_icon_create(lv_obj_t* parent) {
     lv_obj_set_style_radius(wifi_bar4, 1, 0);
     lv_obj_align(wifi_bar4, LV_ALIGN_BOTTOM_LEFT, 17, -1);
     
-    lv_timer_handler();
+    // Don't call lv_timer_handler() during object creation to avoid dirty area errors
+    // The main loop will handle LVGL updates
     
     ESP_LOGI(TAG, "[WiFi Icon] Shared WiFi icon component created successfully");
     return wifi_container;
@@ -124,6 +137,19 @@ void ui_wifi_icon_update(bool connected, int rssi, bool flashing) {
     if (wifi_container == NULL || wifi_bar1 == NULL || wifi_bar2 == NULL || 
         wifi_bar3 == NULL || wifi_bar4 == NULL) {
         return;  // Icon not created yet
+    }
+    
+    // Check if container is still valid (has a valid parent)
+    lv_obj_t* parent = lv_obj_get_parent(wifi_container);
+    if (parent == NULL) {
+        // Icon was deleted, reset state
+        ESP_LOGW(TAG, "[WiFi Icon] Icon was deleted, resetting state");
+        wifi_container = NULL;
+        wifi_bar1 = NULL;
+        wifi_bar2 = NULL;
+        wifi_bar3 = NULL;
+        wifi_bar4 = NULL;
+        return;
     }
     
     // Update flashing state

@@ -34,6 +34,7 @@
 // UI objects
 static lv_obj_t* qr_code = NULL;
 static lv_obj_t* label_qr_text = NULL;
+static bool qr_screen_active = false;
 
 // QR code base URL
 #define QR_CODE_BASE_URL "https://precisionpour.co.uk/pay"
@@ -72,6 +73,8 @@ static void get_chip_id_string(char *buffer, size_t buffer_size) {
 
 void qr_code_screen_init() {
     ESP_LOGI(TAG, "\n=== Initializing QR Code Screen ===");
+    
+    qr_screen_active = true;
     
     // Create base screen layout (logo, WiFi icon, data icon)
     lv_obj_t* content_area = base_screen_create(lv_scr_act());
@@ -160,6 +163,11 @@ void qr_code_screen_init() {
 }
 
 void qr_code_screen_update() {
+    // Only update if screen is active
+    if (!qr_screen_active) {
+        return;
+    }
+    
     // Update base screen (WiFi and data icons)
     base_screen_update();
     
@@ -168,6 +176,9 @@ void qr_code_screen_update() {
 }
 
 void qr_code_screen_cleanup() {
+    // Set inactive first to prevent updates during cleanup
+    qr_screen_active = false;
+    
     // Clean up QR code
     if (qr_code != NULL) {
         lv_obj_del(qr_code);

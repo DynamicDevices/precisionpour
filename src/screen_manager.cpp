@@ -71,6 +71,11 @@ void screen_manager_show_qr_code() {
             break;
     }
     
+    // Give LVGL time to process deletions before creating new objects
+    lv_timer_handler();
+    delay(10);
+    lv_timer_handler();
+    
     // Initialize QR code screen
     qr_code_screen_init();
     current_state = SCREEN_QR_CODE;
@@ -95,6 +100,11 @@ void screen_manager_show_pouring(const char* unique_id, float cost_per_ml, int m
     } else if (current_state == SCREEN_FINISHED) {
         finished_screen_cleanup();
     }
+    
+    // Give LVGL time to process deletions before creating new objects
+    lv_timer_handler();
+    delay(10);
+    lv_timer_handler();
     
     // Initialize pouring screen
     pouring_screen_init();
@@ -127,6 +137,11 @@ void screen_manager_show_finished(float final_volume_ml, float final_cost, const
         pouring_screen_cleanup();
     }
     
+    // Give LVGL time to process deletions before creating new objects
+    lv_timer_handler();
+    delay(10);
+    lv_timer_handler();
+    
     // Initialize finished screen
     finished_screen_init(final_volume_ml, final_cost, currency);
     current_state = SCREEN_FINISHED;
@@ -135,6 +150,11 @@ void screen_manager_show_finished(float final_volume_ml, float final_cost, const
 }
 
 void screen_manager_update() {
+    // Only update if we're not in transition (splash screen transitions are handled separately)
+    if (current_state == SCREEN_SPLASH) {
+        return;  // Splash screen is handled separately in main.cpp
+    }
+    
     switch (current_state) {
         case SCREEN_QR_CODE:
             qr_code_screen_update();
