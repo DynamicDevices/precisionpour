@@ -19,10 +19,8 @@
 
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <esp_timer.h>
 #define TAG "ui_data"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // Static data icon objects (shared across all screens)
 static lv_obj_t* data_container = NULL;
@@ -32,13 +30,13 @@ static lv_obj_t* data_spark3 = NULL;
 
 // Data icon state
 static bool data_active = false;
-static unsigned long last_activity_time = 0;
-static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last activity
+static uint64_t last_activity_time = 0;
+static const uint64_t ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last activity
 
 // Flash animation state (for TCP/IP activity indication)
 static bool flash_state = false;  // Current flash state (true = visible, false = hidden)
-static unsigned long last_flash_toggle = 0;
-static const unsigned long FLASH_INTERVAL_MS = 200;  // Flash every 200ms (5 times per second)
+static uint64_t last_flash_toggle = 0;
+static const uint64_t FLASH_INTERVAL_MS = 200;  // Flash every 200ms (5 times per second)
 
 lv_obj_t* ui_data_icon_create(lv_obj_t* parent) {
     // Check if data icon exists and is still valid (has a valid parent)
@@ -120,7 +118,7 @@ lv_obj_t* ui_data_icon_get_container() {
 void ui_data_icon_set_active(bool active) {
     data_active = active;
     if (active) {
-        last_activity_time = millis();
+        last_activity_time = esp_timer_get_time() / 1000ULL;
     }
 }
 
@@ -142,7 +140,7 @@ void ui_data_icon_update(bool connected, bool active) {
         return;
     }
     
-    unsigned long now = millis();
+    uint64_t now = esp_timer_get_time() / 1000ULL;
     
     // Update activity state
     if (active) {

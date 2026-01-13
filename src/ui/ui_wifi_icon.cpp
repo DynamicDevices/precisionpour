@@ -19,10 +19,8 @@
 
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <esp_timer.h>
 #define TAG "ui_wifi"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // Static WiFi icon objects (shared across all screens)
 static lv_obj_t* wifi_container = NULL;
@@ -33,8 +31,8 @@ static lv_obj_t* wifi_bar4 = NULL;
 
 // WiFi icon state
 static bool wifi_flashing = false;
-static unsigned long last_wifi_flash_toggle = 0;
-static const unsigned long WIFI_FLASH_INTERVAL_MS = 2500;  // 2500ms on, 2500ms off = 5 second cycle
+static uint64_t last_wifi_flash_toggle = 0;
+static const uint64_t WIFI_FLASH_INTERVAL_MS = 2500;  // 2500ms on, 2500ms off = 5 second cycle
 static bool wifi_flash_state = false;  // Current flash state (true = visible, false = hidden)
 
 lv_obj_t* ui_wifi_icon_create(lv_obj_t* parent) {
@@ -184,7 +182,7 @@ void ui_wifi_icon_update(bool connected, int rssi, bool flashing) {
     lv_obj_set_style_bg_color(wifi_bar4, icon_color, 0);
     
     // Handle flashing animation
-    unsigned long now = millis();
+    uint64_t now = esp_timer_get_time() / 1000ULL;
     lv_opa_t base_opacity = LV_OPA_COVER;
     
     if (wifi_flashing) {
