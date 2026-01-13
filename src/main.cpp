@@ -49,12 +49,8 @@
 #include "ui/splashscreen.h"
 #include "wifi/wifi_manager.h"
 
-// Include mode-specific UI based on configuration
-#if TEST_MODE
-    #include "test_mode_ui.h"
-#else
-    #include "ui/screen_manager.h"
-#endif
+// Include screen manager for UI
+#include "ui/screen_manager.h"
 
 // LVGL tick timer
 // hw_timer_t is defined in esp_idf_compat.h
@@ -75,7 +71,6 @@ void lvgl_tick_handler(void* arg) {
     portEXIT_CRITICAL(&lvgl_timer_mux);
 }
 
-#if !TEST_MODE
 // MQTT message handler for screen switching and commands
 void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
     // Null-terminate the payload
@@ -154,7 +149,6 @@ void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
     // Note: Most commands are now handled by screen_manager
     // Legacy commands can be added here if needed
 }
-#endif
 
 // ESP-IDF entry point
 extern "C" void app_main() {
@@ -289,11 +283,7 @@ extern "C" void app_main() {
     
     // Prepare main UI (70%)
     splashscreen_set_progress(70);
-    #if TEST_MODE
-        splashscreen_set_status("Loading test mode...");
-    #else
-        splashscreen_set_status("Loading PrecisionPour...");
-    #endif
+    splashscreen_set_status("Loading PrecisionPour...");
     delay(200);
     
     // Set progress to 90% BEFORE initializing UI (UI init will clear screen)
@@ -323,16 +313,10 @@ extern "C" void app_main() {
     
     // Now initialize main UI (this will create the UI on clean screen)
     ESP_LOGI(TAG_MAIN, "[Setup] About to initialize UI...");
-    #if TEST_MODE
-        ESP_LOGI(TAG_MAIN, "[Setup] Initializing test mode UI...");
-        test_mode_init();
-        ESP_LOGI(TAG_MAIN, "[Setup] Test mode UI initialized - DONE");
-    #else
-        ESP_LOGI(TAG_MAIN, "[Setup] Initializing screen manager...");
-        screen_manager_init();
-        screen_manager_show_qr_code();  // Show QR code screen after splash
-        ESP_LOGI(TAG_MAIN, "[Setup] Screen manager initialized - DONE");
-    #endif
+    ESP_LOGI(TAG_MAIN, "[Setup] Initializing screen manager...");
+    screen_manager_init();
+    screen_manager_show_qr_code();  // Show QR code screen after splash
+    ESP_LOGI(TAG_MAIN, "[Setup] Screen manager initialized - DONE");
     
     // Finalize (100% - just for logging, splashscreen is already gone)
     ESP_LOGI(TAG_MAIN, "[Setup] Setup sequence complete!");
@@ -388,10 +372,8 @@ extern "C" void app_main() {
     // Initialize MQTT client (only if WiFi is connected, IP assigned, and chip ID available)
     if (wifi_connected && ip_assigned && strlen(chip_id) > 0) {
         ESP_LOGI(TAG_MAIN, "[Setup] Initializing MQTT...");
-        #if !TEST_MODE
-            // Set MQTT message callback for screen switching
-            mqtt_client_set_callback(on_mqtt_message);
-        #endif
+    // Set MQTT message callback for screen switching
+    mqtt_client_set_callback(on_mqtt_message);
         bool mqtt_ok = mqtt_client_init(chip_id);
         if (mqtt_ok) {
             ESP_LOGI(TAG_MAIN, "[Setup] MQTT initialized successfully");
@@ -407,11 +389,7 @@ extern "C" void app_main() {
             ESP_LOGW(TAG_MAIN, "[Setup] Skipping MQTT initialization (chip ID unavailable)");
         }
     }
-    #if TEST_MODE
-        ESP_LOGI(TAG_MAIN, "Running in TEST MODE");
-    #else
-        ESP_LOGI(TAG_MAIN, "Running in PRODUCTION MODE");
-    #endif
+    ESP_LOGI(TAG_MAIN, "Running in PRODUCTION MODE");
     ESP_LOGI(TAG_MAIN, "Free heap after setup: %d bytes", ESP.getFreeHeap());
 
 // Forward declaration for ESP-IDF
@@ -475,13 +453,8 @@ void loop_body() {
     // Update flow meter (calculates flow rate and volume)
     flow_meter_update();
     
-    // Update UI based on mode and current screen
-    #if TEST_MODE
-        test_mode_update();
-    #else
-        // Update screen manager (handles all screen updates and transitions)
-        screen_manager_update();
-    #endif
+    // Update screen manager (handles all screen updates and transitions)
+    screen_manager_update();
     
     // Touch controller is handled by LVGL touch driver
     // No need for continuous monitoring here

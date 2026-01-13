@@ -39,28 +39,8 @@
 #define TAG_DISPLAY "display"
 #define TAG_TOUCH "touch"
 
-// Serial compatibility - use ESP_LOG
-class SerialClass {
-public:
-    void begin(int baud) {
-        // UART already initialized by ESP-IDF, just set baud if needed
-        // For now, we'll use ESP_LOG which doesn't need initialization
-    }
-    void print(const char* str) { ESP_LOGI(TAG_MAIN, "%s", str); }
-    void println(const char* str) { ESP_LOGI(TAG_MAIN, "%s", str); }
-    void println() { /* Empty println - no-op to avoid empty log lines */ }
-    void printf(const char* format, ...) {
-        va_list args;
-        va_start(args, format);
-        char buffer[512];
-        vsnprintf(buffer, sizeof(buffer), format, args);
-        ESP_LOGI(TAG_MAIN, "%s", buffer);
-        va_end(args);
-    }
-    void flush() { fflush(stdout); }
-};
-
-extern SerialClass Serial;
+// Serial compatibility removed - use ESP_LOG directly
+// Serial class was unused and has been removed as part of Arduino compatibility cleanup
 
 // GPIO compatibility
 #define HIGH 1
