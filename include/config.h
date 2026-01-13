@@ -98,6 +98,11 @@
     #define MAX_CONSECUTIVE_ERRORS CONFIG_MAX_CONSECUTIVE_ERRORS
     #define ERROR_RESET_DELAY_MS CONFIG_ERROR_RESET_DELAY_MS
     
+    // Development Options
+    #define DEBUG_QR_TAP_TO_POUR CONFIG_DEBUG_QR_TAP_TO_POUR
+    #define DEBUG_POURING_TAP_TO_FINISHED CONFIG_DEBUG_POURING_TAP_TO_FINISHED
+    #define DEBUG_FINISHED_TAP_TO_QR CONFIG_DEBUG_FINISHED_TAP_TO_QR
+    
     // Note: CONFIG_COST_PER_UNIT_DEFAULT is a string in KConfig
     // We'll need to parse it at runtime where it's used, or use a helper function
     // For now, define both string and a default numeric value
@@ -105,6 +110,7 @@
     // Default numeric value (will be parsed from string at runtime if needed)
     #define COST_PER_UNIT_DEFAULT 5.00  // Fallback, actual value from CONFIG_COST_PER_UNIT_DEFAULT
     #define CURRENCY_SYMBOL CONFIG_CURRENCY_SYMBOL
+    #define FINISHED_SCREEN_TIMEOUT_SEC CONFIG_FINISHED_SCREEN_TIMEOUT_SEC
     
     
 #else
@@ -177,6 +183,14 @@
     // Options: "GBP " (pound - text prefix since £ symbol not in font), "$" (dollar), or any other string
     // Note: £ symbol (U+00A3) is not in the Montserrat font, so we use "GBP " text prefix instead
     #define CURRENCY_SYMBOL "GBP "  // Default currency symbol (text prefix for pounds)
+
+    // Finished screen timeout
+    #define FINISHED_SCREEN_TIMEOUT_SEC 5  // Default timeout in seconds before returning to QR code screen
+
+    // Development Options
+    #define DEBUG_QR_TAP_TO_POUR 0  // Set to 1 to enable QR code tap to pour for debugging
+    #define DEBUG_POURING_TAP_TO_FINISHED 0  // Set to 1 to enable pouring screen tap to finished for debugging
+    #define DEBUG_FINISHED_TAP_TO_QR 0  // Set to 1 to enable finished screen tap to QR code for debugging
 
     // RGB LED pins (common anode: LOW=on, HIGH=off)
     #define LED_R_PIN 22  // Red LED control - GPIO22

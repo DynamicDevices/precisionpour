@@ -18,6 +18,7 @@
 #include "pouring_screen.h"
 #include "base_screen.h"
 #include "flow_meter.h"
+#include "screen_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -62,6 +63,16 @@ static void pouring_screen_touch_cb(lv_event_t *e);
 
 void pouring_screen_init() {
     ESP_LOGI(TAG, "\n=== Initializing Pouring Screen ===");
+    
+    // Log debug option status
+    #ifdef DEBUG_POURING_TAP_TO_FINISHED
+    ESP_LOGI(TAG, "[Pouring Screen] DEBUG_POURING_TAP_TO_FINISHED is defined, value: %d", DEBUG_POURING_TAP_TO_FINISHED);
+    if (DEBUG_POURING_TAP_TO_FINISHED) {
+        ESP_LOGI(TAG, "[Pouring Screen] Debug mode: Tap to finished screen enabled");
+    }
+    #else
+    ESP_LOGI(TAG, "[Pouring Screen] DEBUG_POURING_TAP_TO_FINISHED is NOT defined");
+    #endif
     
     pouring_screen_active = true;
     
@@ -159,10 +170,42 @@ void pouring_screen_init() {
 }
 
 // Touch event callback for pouring screen - switch back to QR code screen on tap
+// Or transition to finished screen if debug option is enabled
 static void pouring_screen_touch_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     
     if (code == LV_EVENT_CLICKED) {
+        #ifdef DEBUG_POURING_TAP_TO_FINISHED
+        if (DEBUG_POURING_TAP_TO_FINISHED) {
+            // Debug mode: transition to finished screen with current values
+            ESP_LOGI(TAG, "[Pouring Screen] Debug: Screen tapped - transitioning to finished screen");
+            
+            // Get current volume and cost
+            float volume_liters = flow_meter_get_total_volume_liters();
+            float volume_ml = volume_liters * 1000.0;  // Convert to ml
+            
+            // Calculate total cost
+            float total_cost = 0.0;
+            if (pour_active && cost_per_ml > 0.0) {
+                total_cost = volume_ml * cost_per_ml;
+            } else {
+                // Use test values if no pour is active
+                total_cost = volume_ml * 0.005f;  // Default £0.005 per ml
+            }
+            
+            // Get currency symbol
+            const char* currency = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
+            
+            ESP_LOGI(TAG, "[Pouring Screen] Debug: Transitioning with volume=%.2f ml, cost=%.2f, currency=%s",
+                     volume_ml, total_cost, currency);
+            
+            // Transition to finished screen
+            screen_manager_show_finished(volume_ml, total_cost, currency);
+            return;
+        }
+        #endif
+        
+        // Normal mode: switch back to QR code screen
         ESP_LOGI(TAG, "[Pouring Screen] Screen tapped - switching to QR code screen");
         
         // Call the callback to switch back to QR code screen

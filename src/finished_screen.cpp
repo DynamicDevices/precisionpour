@@ -17,6 +17,7 @@
 #include "config.h"
 #include "finished_screen.h"
 #include "base_screen.h"
+#include "screen_manager.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -41,15 +42,28 @@ static lv_obj_t* cost_label = NULL;
 static lv_obj_t* cost_value = NULL;
 static lv_obj_t* timeout_label = NULL;
 
-// Timeout configuration
-#define FINISHED_SCREEN_TIMEOUT_MS 5000  // 5 seconds timeout
+// Timeout configuration - use configurable value from KConfig
+#define FINISHED_SCREEN_TIMEOUT_MS (FINISHED_SCREEN_TIMEOUT_SEC * 1000)
 
 // State
 static unsigned long finished_screen_start_time = 0;
 static bool finished_screen_active = false;
 
+// Forward declaration for touch event handler
+static void finished_screen_touch_cb(lv_event_t *e);
+
 void finished_screen_init(float final_volume_ml, float final_cost, const char* currency) {
     ESP_LOGI(TAG, "\n=== Initializing Finished Screen ===");
+    
+    // Log debug option status
+    #ifdef DEBUG_FINISHED_TAP_TO_QR
+    ESP_LOGI(TAG, "[Finished Screen] DEBUG_FINISHED_TAP_TO_QR is defined, value: %d", DEBUG_FINISHED_TAP_TO_QR);
+    if (DEBUG_FINISHED_TAP_TO_QR) {
+        ESP_LOGI(TAG, "[Finished Screen] Debug mode: Tap to QR code screen enabled");
+    }
+    #else
+    ESP_LOGI(TAG, "[Finished Screen] DEBUG_FINISHED_TAP_TO_QR is NOT defined");
+    #endif
     
     // Create base screen layout (logo, WiFi icon, data icon)
     lv_obj_t* content_area = base_screen_create(lv_scr_act());
@@ -116,6 +130,13 @@ void finished_screen_init(float final_volume_ml, float final_cost, const char* c
         lv_obj_set_style_text_align(timeout_label, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_align(timeout_label, LV_ALIGN_BOTTOM_MID, 0, -10);
     }
+    
+    // Add touch event handler for debug mode (tap to QR code)
+    #ifdef DEBUG_FINISHED_TAP_TO_QR
+    if (DEBUG_FINISHED_TAP_TO_QR) {
+        lv_obj_add_event_cb(lv_scr_act(), finished_screen_touch_cb, LV_EVENT_CLICKED, NULL);
+    }
+    #endif
     
     // Record start time for timeout
     finished_screen_start_time = millis();
@@ -203,4 +224,19 @@ void finished_screen_cleanup() {
     base_screen_cleanup();
     
     ESP_LOGI(TAG, "[Finished Screen] Finished Screen cleaned up");
+}
+
+/**
+ * Touch event handler for finished screen (debug mode only)
+ * Transitions to QR code screen when screen is tapped
+ */
+static void finished_screen_touch_cb(lv_event_t *e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    
+    if (code == LV_EVENT_CLICKED) {
+        ESP_LOGI(TAG, "[Finished Screen] Debug: Screen tapped - transitioning to QR code screen");
+        
+        // Transition to QR code screen
+        screen_manager_show_qr_code();
+    }
 }

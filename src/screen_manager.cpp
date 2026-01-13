@@ -72,9 +72,11 @@ void screen_manager_show_qr_code() {
     }
     
     // Give LVGL time to process deletions before creating new objects
-    lv_timer_handler();
-    delay(10);
-    lv_timer_handler();
+    // Process multiple times to ensure all pending operations are flushed
+    for (int i = 0; i < 5; i++) {
+        lv_timer_handler();
+        delay(5);
+    }
     
     // Initialize QR code screen
     qr_code_screen_init();
@@ -102,9 +104,11 @@ void screen_manager_show_pouring(const char* unique_id, float cost_per_ml, int m
     }
     
     // Give LVGL time to process deletions before creating new objects
-    lv_timer_handler();
-    delay(10);
-    lv_timer_handler();
+    // Process multiple times to ensure all pending operations are flushed
+    for (int i = 0; i < 5; i++) {
+        lv_timer_handler();
+        delay(5);
+    }
     
     // Initialize pouring screen
     pouring_screen_init();
@@ -138,9 +142,11 @@ void screen_manager_show_finished(float final_volume_ml, float final_cost, const
     }
     
     // Give LVGL time to process deletions before creating new objects
-    lv_timer_handler();
-    delay(10);
-    lv_timer_handler();
+    // Process multiple times to ensure all pending operations are flushed
+    for (int i = 0; i < 5; i++) {
+        lv_timer_handler();
+        delay(5);
+    }
     
     // Initialize finished screen
     finished_screen_init(final_volume_ml, final_cost, currency);

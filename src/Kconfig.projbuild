@@ -355,6 +355,13 @@ menu "PrecisionPour Configuration"
             help
                 Currency symbol to display (e.g., "GBP ", "$", "EUR ")
                 Note: £ symbol (U+00A3) is not in the Montserrat font, so use "GBP " text prefix
+
+        config FINISHED_SCREEN_TIMEOUT_SEC
+            int "Finished Screen Timeout (seconds)"
+            range 1 60
+            default 5
+            help
+                Timeout in seconds before the finished screen automatically returns to the QR code screen
     endmenu
 
     menu "Development Options"
@@ -364,6 +371,27 @@ menu "PrecisionPour Configuration"
             default 3
             help
                 Debug output level (0=none, 5=verbose)
+
+        config DEBUG_QR_TAP_TO_POUR
+            bool "Enable QR Code Tap to Pour (Debug)"
+            default n
+            help
+                When enabled, tapping on the QR code will transition to the pouring screen
+                with test parameters. Useful for debugging without MQTT payment flow.
+
+        config DEBUG_POURING_TAP_TO_FINISHED
+            bool "Enable Pouring Screen Tap to Finished (Debug)"
+            default n
+            help
+                When enabled, tapping on the pouring screen will transition to the finished screen
+                with current volume and cost. Useful for debugging without waiting for max volume.
+
+        config DEBUG_FINISHED_TAP_TO_QR
+            bool "Enable Finished Screen Tap to QR Code (Debug)"
+            default n
+            help
+                When enabled, tapping on the finished screen will immediately transition to the QR code screen.
+                Useful for debugging without waiting for the timeout.
     endmenu
 
 endmenu

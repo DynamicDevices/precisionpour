@@ -56,8 +56,12 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
     lv_obj_set_style_bg_opa(parent, LV_OPA_COVER, 0);
     
     // Wait for LVGL to finish processing the cleanup
-    // Don't call lv_timer_handler() during object creation to avoid dirty area errors
-    delay(20);
+    // Process multiple times to ensure all deletions are fully processed
+    // This prevents "modifying dirty areas in render" errors
+    for (int i = 0; i < 5; i++) {
+        lv_timer_handler();
+        delay(5);
+    }
     
     // Create shared logo (top center) - create first so it's behind other elements
     if (ui_logo_create(parent) == NULL) {
@@ -106,8 +110,11 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
     }
     
     // Process all pending LVGL operations after creating all objects
-    // Use delay instead of lv_timer_handler() to avoid dirty area errors
-    delay(20);
+    // Process multiple times to ensure all creations are fully processed
+    for (int i = 0; i < 3; i++) {
+        lv_timer_handler();
+        delay(5);
+    }
     
     ESP_LOGI(TAG, "[Base Screen] Base screen layout created successfully");
     return content_area;

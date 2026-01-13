@@ -6,318 +6,88 @@ Firmware for ESP32-based touchscreen display system with flow meter monitoring, 
 
 This software is proprietary and confidential. See [LICENSE](LICENSE) for details.
 
-## Development Environment Options
-
-### Option 1: PlatformIO (Recommended) ⭐
-
-**Pros:**
-- Modern, professional development environment
-- Integrated with VS Code
-- Excellent library management
-- Cross-platform support
-- Built-in serial monitor and debugging tools
-
-**Setup:**
-1. Install VS Code
-2. Install PlatformIO IDE extension
-3. Open this project folder in VS Code
-4. PlatformIO will automatically detect and set up the environment
-
-**Usage:**
-```bash
-# Build the project
-pio run
-
-# Upload to ESP32
-pio run -t upload
-
-# Monitor serial output
-pio device monitor
-```
-
-### Option 2: ESP-IDF (Official Framework)
-
-**Pros:**
-- Official Espressif development framework
-- Full control over ESP32 features
-- Advanced debugging capabilities
-- Production-ready
-
-**Setup:**
-```bash
-# Install ESP-IDF (Linux)
-mkdir -p ~/esp
-cd ~/esp
-git clone --recursive https://github.com/espressif/esp-idf.git
-cd esp-idf
-./install.sh esp32
-
-# Source the environment
-. ~/esp/esp-idf/export.sh
-```
-
-### Option 3: Arduino IDE
-
-**Pros:**
-- Simple and beginner-friendly
-- Large community and examples
-- Quick prototyping
-
-**Setup:**
-1. Install Arduino IDE
-2. Add ESP32 board support:
-   - File > Preferences > Additional Board Manager URLs
-   - Add: `https://dl.espressif.com/dl/package_esp32_index.json`
-3. Tools > Board > Boards Manager > Search "ESP32" > Install
-4. Install libraries: TFT_eSPI, LVGL (if needed)
-
-## Project Structure
-
-```
-precisionpour/
-├── platformio.ini          # PlatformIO configuration
-├── src/                    # Source files (.cpp)
-│   └── main.cpp            # Main firmware entry point
-├── include/                # Header files (.h, .hpp)
-│   ├── config.h            # Hardware pin definitions
-│   ├── display.h           # Display driver interface
-│   └── touch.h             # Touch controller interface
-├── lib/                    # Custom libraries (not in PlatformIO registry)
-├── test/                   # Unit tests
-├── data/                   # Filesystem data (SPIFFS/LittleFS)
-├── docs/                   # Documentation
-│   ├── SETUP_GUIDE.md      # PlatformIO setup instructions
-│   ├── QUICK_REFERENCE.md  # Command reference
-│   └── HARDWARE_SETUP.md   # Hardware configuration guide
-└── README.md               # This file
-```
-
-### Directory Usage
-
-- **`src/`** - All `.cpp` source files. PlatformIO automatically compiles these.
-- **`include/`** - Header files. Automatically added to include path.
-- **`lib/`** - Custom libraries not available via PlatformIO's library manager.
-- **`test/`** - Unit tests. Run with `pio test`.
-- **`data/`** - Files to upload to ESP32 filesystem. Upload with `pio run -t uploadfs`.
-- **`docs/`** - Project documentation and guides.
-
-## Hardware Configuration
-
-### Display: 2.8" ESP32-32E Display Module
-- **Display driver**: ILI9341 (240x320 TFT, landscape 320x240)
-- **Touch controller**: XPT2046 (resistive touchscreen)
-- **LCD SPI pins**: GPIO13 (MOSI), GPIO12 (MISO), GPIO14 (SCLK), GPIO15 (CS), GPIO2 (DC), GPIO4 (RST), GPIO21 (BL)
-- **Touch SPI pins**: GPIO25 (SCLK), GPIO32 (MOSI), GPIO39 (MISO), GPIO33 (CS), GPIO36 (IRQ)
-- **Note**: Touch screen uses a **separate SPI bus** from the LCD
-- Pin connections defined in `include/config.h`
-- Full pinout documentation: [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md)
-
-### Flow Meter
-- **YF-S201 Hall Effect Flow Sensor**
-- Flow rate range: 1-30 L/min
-- Accuracy: ±10%
-- Pulses per liter: 450
-- Connected to GPIO 26 (interrupt-capable pin)
-- **Note**: Changed from GPIO25 to GPIO26 to avoid conflict with TOUCH_SCLK
-- Wiring:
-  - Red wire → 5V
-  - Black wire → GND
-  - Yellow wire → GPIO 26
-
-### Network Connectivity
-- WiFi connection with auto-reconnect
-- MQTT client for cloud communication
-- Device-specific MQTT topics based on ESP32 MAC address
-
-## Features
-
-### UI Framework: LVGL
-- Modern widget-based UI framework
-- Touch input support
-- Smooth animations and transitions
-- Low memory footprint
-- Hardware-accelerated rendering
-
-### Production Mode UI
-- PrecisionPour branded splashscreen with progress bar
-- QR code for payment (device-specific URL)
-- WiFi connection status icon (bottom left)
-- Communication activity icon (bottom right)
-- Logo and branding
-
-### Flow Meter Integration
-- Real-time flow rate measurement (L/min)
-- Total volume tracking (liters)
-- Interrupt-based pulse counting
-- Automatic flow detection
-
-### Network Features
-- WiFi connection with auto-reconnect
-- MQTT client for cloud communication
-- Device-specific MQTT topics
-- Activity monitoring and status indicators
-- JSON-based command protocol for pour control
-
-### Pouring Mode UI
-- Real-time flow rate display (mL/min)
-- Volume tracking (ml)
-- Cost calculation with configurable currency (GBP/USD)
-- Maximum volume limits
-- Touch-to-return to main screen
-- WiFi and communication status icons
-
-### Project Structure
-
-```
-precisionpour/
-├── src/
-│   ├── main.cpp              # Main firmware entry point
-│   ├── lvgl_display.cpp      # Display driver integration
-│   ├── lvgl_touch.cpp        # Touch controller integration
-│   ├── splashscreen.cpp      # Splashscreen with progress bar
-│   ├── production_mode_ui.cpp # Production UI implementation
-│   ├── test_mode_ui.cpp      # Test mode UI
-│   ├── wifi_manager.cpp      # WiFi connection management
-│   ├── mqtt_client.cpp       # MQTT client implementation
-│   └── flow_meter.cpp        # Flow meter reading and calculations
-├── include/
-│   ├── config.h              # Hardware pin definitions
-│   ├── lv_conf.h            # LVGL configuration
-│   ├── lvgl_display.h       # Display driver interface
-│   ├── lvgl_touch.h         # Touch driver interface
-│   ├── splashscreen.h       # Splashscreen interface
-│   ├── production_mode_ui.h # Production UI interface
-│   ├── wifi_manager.h       # WiFi manager interface
-│   ├── mqtt_client.h        # MQTT client interface
-│   ├── flow_meter.h         # Flow meter interface
-│   └── secrets.h            # WiFi/MQTT credentials (gitignored)
-└── lib/
-    └── TFT_eSPI_Config/     # TFT_eSPI display configuration
-        └── User_Setup.h
-```
-
 ## Quick Start
 
-1. **Install PlatformIO**: See [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
-2. **Configure Credentials**: Copy `include/secrets.h.example` to `include/secrets.h` and add your WiFi/MQTT credentials
-3. **Hardware Setup**: Connect display, touch, and flow meter according to pin definitions in `include/config.h`
-4. **Build & Upload**: Use PlatformIO commands (see [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md))
+1. **Install PlatformIO**: Install VS Code and the PlatformIO IDE extension
+2. **Configure**: Use `pio run -e esp32dev-idf -t menuconfig` to configure settings
+3. **Build & Upload**: `pio run -t upload`
+4. **Monitor**: `pio device monitor`
 
 ## Configuration
 
-The project supports two configuration methods:
-
-### Option 1: ESP-IDF KConfig (Recommended for Production)
-Use the menu-based configuration system:
+### KConfig (Recommended)
 
 ```bash
-# Open configuration menu
 pio run -e esp32dev-idf -t menuconfig
-
-# Navigate to "PrecisionPour Configuration" menu
-# Configure all settings via menu interface
-# Save and exit
 ```
 
-See [docs/KCONFIG_MIGRATION.md](docs/KCONFIG_MIGRATION.md) for detailed guide.
+Navigate to **PrecisionPour Configuration** to configure:
+- Hardware pins (display, touch, flow meter)
+- WiFi credentials
+- MQTT server settings
+- Operating mode (Production/Test)
+- Debug options
 
-### Option 2: Arduino Framework (Current Default)
-Edit `include/config.h` directly:
+### WiFi and MQTT
 
-```cpp
-#define TEST_MODE 0  // 0 = Production, 1 = Test
-#define TFT_MOSI 13  // Display pin
-// ... etc
-```
+WiFi and MQTT credentials can be set via:
+1. **KConfig** (highest priority)
+2. **secrets.h** (fallback) - Copy `include/secrets.h.example` to `include/secrets.h`
 
-### WiFi and MQTT Setup
-1. Copy `include/secrets.h.example` to `include/secrets.h`
-2. Edit `include/secrets.h` and add your credentials:
-   ```cpp
-   #define WIFI_SSID "YourWiFiNetwork"
-   #define WIFI_PASSWORD "YourPassword"
-   #define MQTT_SERVER "mqtt.example.com"
-   ```
-3. The `secrets.h` file is gitignored and will not be committed
+## Hardware
 
-### Operating Modes
-- **Production Mode** (`TEST_MODE = 0`): PrecisionPour branded UI with QR code
-- **Test Mode** (`TEST_MODE = 1`): Hardware testing interface
+### Display Module: 2.8" ESP32-32E
+- **Display**: ILI9341 TFT (320x240 landscape)
+- **Touch**: XPT2046 resistive touchscreen
+- **Flow Meter**: YF-S201 Hall Effect sensor on GPIO26
 
-**ESP-IDF**: Set via `idf.py menuconfig` → PrecisionPour Configuration → Operating Mode  
-**Arduino**: Set in `include/config.h`: `#define TEST_MODE 0`
+See [docs/HARDWARE_SETUP.md](docs/HARDWARE_SETUP.md) for detailed pin configuration.
 
-## API Usage
+## Features
 
-### Flow Meter
-```cpp
-// Get current flow rate
-float flow_rate = flow_meter_get_flow_rate_lpm();  // Liters per minute
+- **LVGL-based UI** with touch support
+- **Flow meter integration** with real-time rate and volume tracking
+- **WiFi connectivity** with auto-reconnect
+- **MQTT communication** for cloud integration
+- **Production mode** with QR code payment
+- **Test mode** for hardware validation
 
-// Get total volume
-float volume = flow_meter_get_total_volume_liters();  // Total liters
+## MQTT Protocol
 
-// Reset volume counter
-flow_meter_reset_volume();
-```
+The device subscribes to device-specific MQTT topics and responds to JSON commands.
 
-### WiFi
-```cpp
-// Check connection status
-bool connected = wifi_manager_is_connected();
+See [docs/MQTT_PROTOCOL.md](docs/MQTT_PROTOCOL.md) for complete protocol documentation.
 
-// Get IP address
-String ip = wifi_manager_get_ip();
+### "paid" Command Example
 
-// Get MAC address
-String mac = wifi_manager_get_mac_address();
-```
-
-### MQTT
-```cpp
-// Publish message
-mqtt_client_publish("topic", "message");
-
-// Check connection
-bool connected = mqtt_client_is_connected();
-
-// Check for activity
-bool active = mqtt_client_has_activity();
-```
-
-### MQTT Commands
-
-The device subscribes to `precisionpour/{CHIP_ID}/commands` and `precisionpour/{CHIP_ID}/commands/paid`.
-
-#### "paid" Command (JSON)
-Triggers pouring mode with payment parameters:
 ```json
 {
-  "id": "unique_payment_id",
+  "id": "order_12345",
   "cost_per_ml": 0.005,
   "max_ml": 500,
   "currency": "GBP"
 }
 ```
 
-- `id`: Unique identifier for this pour transaction
-- `cost_per_ml`: Cost per milliliter (e.g., 0.005 = £0.005/ml)
-- `max_ml`: Maximum milliliters allowed for this pour
-- `currency`: Currency code - "GBP" (British Pounds) or "USD" (US Dollars)
+## Project Structure
 
-#### Other Commands
-- `start_pour`: Switch to pouring screen
-- `stop_pour`: Switch back to production screen
-- `cost:X.XX`: Update cost per unit (legacy format)
+```
+precisionpour/
+├── src/              # Source files
+├── include/          # Header files
+│   └── config.h      # Hardware configuration
+├── platformio.ini    # PlatformIO configuration
+└── docs/             # Documentation
+```
+
+## Debug Options
+
+Enable debug tap-to-navigate via `menuconfig`:
+- `DEBUG_QR_TAP_TO_POUR` - Tap QR code → Pouring screen
+- `DEBUG_POURING_TAP_TO_FINISHED` - Tap Pouring → Finished screen
+- `DEBUG_FINISHED_TAP_TO_QR` - Tap Finished → QR code screen
 
 ## Documentation
 
-- **[Setup Guide](docs/SETUP_GUIDE.md)** - Detailed PlatformIO installation instructions
-- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands and shortcuts
-- **[Hardware Setup](docs/HARDWARE_SETUP.md)** - Hardware configuration guide
-- **[Flow Meter Guide](docs/FLOW_METER.md)** - YF-S201 flow sensor integration details
-- **[MQTT Protocol](docs/MQTT_PROTOCOL.md)** - MQTT command protocol and JSON format
-- **[Touchscreen Debugging](docs/TOUCHSCREEN_DEBUGGING.md)** - Touchscreen troubleshooting guide
-- **[Project Structure](docs/PROJECT_STRUCTURE.md)** - Code organization and file structure
-- **[KConfig Migration](docs/KCONFIG_MIGRATION.md)** - ESP-IDF KConfig system guide
-- **[KConfig Usage](docs/KCONFIG_USAGE.md)** - Quick reference for KConfig usage
+- [Hardware Setup](docs/HARDWARE_SETUP.md) - Pin configuration and hardware details
+- [MQTT Protocol](docs/MQTT_PROTOCOL.md) - Communication protocol and commands

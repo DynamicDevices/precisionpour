@@ -29,6 +29,7 @@ static esp_mqtt_client_handle_t mqtt_client_handle = NULL;
 static char mqtt_client_id[64] = {0};
 static char mqtt_subscribe_topic[128] = {0};
 static char mqtt_paid_topic[128] = {0};  // Topic for "paid" command
+static char mqtt_uri[256] = {0};  // MQTT broker URI (must persist for connection)
 static unsigned long last_reconnect_attempt = 0;
 static bool mqtt_connected = false;
 static bool mqtt_connecting = false;  // Track if we're in the process of connecting
@@ -64,13 +65,25 @@ bool mqtt_connection_init(const char* chip_id) {
         ESP_LOGI(TAG, "[MQTT] Using secrets.h server: %s", mqtt_server);
     #endif
     
-    // Use URI format with mqtt:// scheme (required by ESP-IDF MQTT client)
-    char uri[256];
-    snprintf(uri, sizeof(uri), "mqtt://%s:%d", mqtt_server, MQTT_PORT);
-    ESP_LOGI(TAG, "[MQTT] Connecting to: %s", uri);
+    // Validate mqtt_server is not NULL or empty
+    if (mqtt_server == NULL || strlen(mqtt_server) == 0) {
+        ESP_LOGE(TAG, "[MQTT] ERROR: MQTT server hostname is NULL or empty!");
+        return false;
+    }
+    
+    // Build URI with mqtt:// scheme (required by ESP-IDF MQTT client)
+    // Format: mqtt://hostname:port
+    // Store in static variable so it persists for connection
+    int uri_len = snprintf(mqtt_uri, sizeof(mqtt_uri), "mqtt://%s:%d", mqtt_server, MQTT_PORT);
+    if (uri_len < 0 || uri_len >= (int)sizeof(mqtt_uri)) {
+        ESP_LOGE(TAG, "[MQTT] ERROR: Failed to build URI or URI too long!");
+        return false;
+    }
+    
+    ESP_LOGI(TAG, "[MQTT] Connecting to: %s", mqtt_uri);
     
     esp_mqtt_client_config_t mqtt_cfg = {};
-    mqtt_cfg.broker.address.uri = uri;  // Use URI with scheme
+    mqtt_cfg.broker.address.uri = mqtt_uri;  // Use URI with scheme (required)
     mqtt_cfg.credentials.client_id = mqtt_client_id;
     mqtt_cfg.session.keepalive = MQTT_KEEPALIVE;
     mqtt_cfg.network.reconnect_timeout_ms = MQTT_RECONNECT_DELAY;
