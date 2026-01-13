@@ -25,10 +25,9 @@
 
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #define TAG "screen_mgr"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // Current screen state
 static ScreenState current_state = SCREEN_SPLASH;
@@ -75,7 +74,7 @@ void screen_manager_show_qr_code() {
     // Process multiple times to ensure all pending operations are flushed
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     // Initialize QR code screen
@@ -107,7 +106,7 @@ void screen_manager_show_pouring(const char* unique_id, float cost_per_ml, int m
     // Process multiple times to ensure all pending operations are flushed
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     // Initialize pouring screen
@@ -145,7 +144,7 @@ void screen_manager_show_finished(float final_volume_ml, float final_cost, const
     // Process multiple times to ensure all pending operations are flushed
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     // Initialize finished screen

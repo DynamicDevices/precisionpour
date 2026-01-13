@@ -25,10 +25,10 @@
 
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #define TAG "finished"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // Brand colors
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
@@ -46,7 +46,7 @@ static lv_obj_t* timeout_label = NULL;
 #define FINISHED_SCREEN_TIMEOUT_MS (FINISHED_SCREEN_TIMEOUT_SEC * 1000)
 
 // State
-static unsigned long finished_screen_start_time = 0;
+static uint64_t finished_screen_start_time = 0;
 static bool finished_screen_active = false;
 
 // Forward declaration for touch event handler
@@ -139,12 +139,12 @@ void finished_screen_init(float final_volume_ml, float final_cost, const char* c
     #endif
     
     // Record start time for timeout
-    finished_screen_start_time = millis();
+    finished_screen_start_time = esp_timer_get_time() / 1000ULL;
     finished_screen_active = true;
     
     // Force refresh
     lv_timer_handler();
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
     lv_timer_handler();
     
     ESP_LOGI(TAG, "[Finished Screen] Finished Screen initialized");
@@ -161,8 +161,8 @@ bool finished_screen_update() {
     base_screen_update();
     
     // Check if timeout has elapsed
-    unsigned long now = millis();
-    unsigned long elapsed = now - finished_screen_start_time;
+    uint64_t now = esp_timer_get_time() / 1000ULL;
+    uint64_t elapsed = now - finished_screen_start_time;
     
     if (elapsed >= FINISHED_SCREEN_TIMEOUT_MS) {
         ESP_LOGI(TAG, "[Finished Screen] Timeout elapsed, ready to return to QR code screen");

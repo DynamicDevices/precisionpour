@@ -28,8 +28,9 @@
 #include <esp_log.h>
 #define TAG "pouring"
 
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
+// ESP-IDF framework headers
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 // Brand colors
 #define COLOR_TEXT lv_color_hex(0xFFFFFF) // White
@@ -163,7 +164,7 @@ void pouring_screen_init() {
     
     // Force refresh
     lv_timer_handler();
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
     lv_timer_handler();
     
     ESP_LOGI(TAG, "[Pouring Screen] Pouring Screen initialized");

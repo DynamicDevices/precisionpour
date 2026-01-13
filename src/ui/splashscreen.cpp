@@ -20,10 +20,9 @@
 // System/Standard library headers
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #define TAG "splashscreen"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 #if !TEST_MODE
     // Include the Precision Pour logo image (used for both splashscreen and main page)
@@ -63,7 +62,7 @@ void splashscreen_init() {
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
         
         // Clear screen to ensure clean background
         lv_obj_clean(lv_scr_act());
@@ -72,7 +71,7 @@ void splashscreen_init() {
         lv_obj_set_style_bg_color(lv_scr_act(), lv_color_hex(0x000000), 0);
         lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, 0);
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
         
         // Create image object
         splashscreen_img = lv_img_create(lv_scr_act());
@@ -113,7 +112,7 @@ void splashscreen_init() {
         ESP_LOGI(TAG, "[Splashscreen] Image source set, processing LVGL...");
         for (int i = 0; i < 10; i++) {
             lv_timer_handler();
-            delay(5);
+            vTaskDelay(pdMS_TO_TICKS(5));
         }
         
         ESP_LOGI(TAG, "[Splashscreen] Precision Pour logo should be visible");
@@ -166,7 +165,7 @@ void splashscreen_init() {
     // Process LVGL multiple times to ensure image is rendered
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     #if TEST_MODE
@@ -226,7 +225,7 @@ void splashscreen_remove() {
         lv_obj_del(progress_bar);
         progress_bar = NULL;
         lv_timer_handler();
-        delay(10);  // Small delay to ensure progress bar is removed
+        vTaskDelay(pdMS_TO_TICKS(10));  // Small delay to ensure progress bar is removed
     }
     
     // Remove status label
@@ -246,7 +245,7 @@ void splashscreen_remove() {
     
     // Process LVGL to update display
     lv_timer_handler();
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
     lv_timer_handler();
     
     ESP_LOGI(TAG, "[Splashscreen] Splashscreen removed");

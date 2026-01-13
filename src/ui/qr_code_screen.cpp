@@ -30,8 +30,9 @@
 #include <esp_system.h>
 #define TAG "qr_screen"
 
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
+// ESP-IDF framework headers
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 // UI objects
 static lv_obj_t* qr_code = NULL;
@@ -206,7 +207,7 @@ void qr_code_screen_init() {
     
     // Force refresh
     lv_timer_handler();
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
     lv_timer_handler();
     
     ESP_LOGI(TAG, "[QR Screen] QR Code Screen initialized");

@@ -24,17 +24,17 @@
 
 // ESP-IDF framework headers
 #include <esp_log.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #define TAG "base_screen"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // Static content area container
 static lv_obj_t* content_area = NULL;
 
 // WiFi update throttling
-static unsigned long last_wifi_rssi_update = 0;
-static const unsigned long WIFI_RSSI_UPDATE_INTERVAL_MS = 10000;  // Update every 10 seconds
+static uint64_t last_wifi_rssi_update = 0;
+static const uint64_t WIFI_RSSI_UPDATE_INTERVAL_MS = 10000;  // Update every 10 seconds
 static int cached_rssi = 0;
 static bool cached_wifi_connected = false;
 
@@ -60,7 +60,7 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
     // This prevents "modifying dirty areas in render" errors
     for (int i = 0; i < 5; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     // Create shared logo (top center) - create first so it's behind other elements
@@ -113,7 +113,7 @@ lv_obj_t* base_screen_create(lv_obj_t* parent) {
     // Process multiple times to ensure all creations are fully processed
     for (int i = 0; i < 3; i++) {
         lv_timer_handler();
-        delay(5);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     ESP_LOGI(TAG, "[Base Screen] Base screen layout created successfully");
@@ -126,7 +126,7 @@ lv_obj_t* base_screen_get_content_area() {
 
 void base_screen_update() {
     // Update WiFi icon
-    unsigned long now = millis();
+    uint64_t now = esp_timer_get_time() / 1000ULL;
     
     // Throttle WiFi RSSI updates
     if (now - last_wifi_rssi_update >= WIFI_RSSI_UPDATE_INTERVAL_MS || last_wifi_rssi_update == 0) {
