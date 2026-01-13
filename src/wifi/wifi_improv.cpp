@@ -16,12 +16,11 @@
 #include <esp_mac.h>
 #include <esp_system.h>
 #include <esp_wifi.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <cstring>
 #define TAG "wifi_improv"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
-#include "system/esp_system_compat.h"
 
 // Third-party library headers (if enabled)
 #if USE_IMPROV_WIFI
@@ -51,12 +50,12 @@ static void on_improv_connected(const char* ssid, const char* password) {
     if (NimBLEDevice::getInitialized()) {
         ESP_LOGI(TAG, "[Improv WiFi BLE] Deinitializing BLE before connecting to WiFi...");
         NimBLEDevice::deinit(true);
-        delay(200);  // Give BLE time to fully shut down
+        vTaskDelay(pdMS_TO_TICKS(200));  // Give BLE time to fully shut down
     }
     
     // Re-enable WiFi
     esp_wifi_start();
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
     
     // Try to connect with new credentials
     if (wifi_manager_connect(String(ssid), String(password))) {
@@ -65,12 +64,12 @@ static void on_improv_connected(const char* ssid, const char* password) {
         improv_provisioning_active = false;
         ESP_LOGI(TAG, "[Improv WiFi BLE] Provisioning successful!");
         ESP_LOGI(TAG, "[Improv WiFi BLE] Credentials saved, restarting device...");
-        delay(1000);  // Give time for serial output to flush
-        ESP.restart();  // Restart the device after successful provisioning
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Give time for serial output to flush
+        esp_restart();  // Restart the device after successful provisioning
     } else {
         ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to connect with provided credentials");
         ESP_LOGI(TAG, "[Improv WiFi BLE] Restarting BLE provisioning...");
-        delay(1000);
+        vTaskDelay(pdMS_TO_TICKS(1000));
         wifi_improv_start_provisioning();
     }
 }
@@ -112,7 +111,7 @@ void wifi_improv_start_provisioning() {
     ESP_LOGI(TAG, "[Improv WiFi BLE] Disabling WiFi for BLE...");
     esp_wifi_stop();
     esp_wifi_deinit();
-    delay(100);  // Give WiFi time to fully shut down
+    vTaskDelay(pdMS_TO_TICKS(100));  // Give WiFi time to fully shut down
     
     // Initialize BLE with device name including chip ID
     if (!NimBLEDevice::getInitialized()) {
@@ -157,12 +156,13 @@ void wifi_improv_loop() {
     // Handle Improv WiFi BLE provisioning if active
     if (improv_provisioning_active) {
         // Check for timeout
-        static unsigned long provisioning_start = 0;
+        static uint64_t provisioning_start = 0;
         if (provisioning_start == 0) {
-            provisioning_start = millis();
+            provisioning_start = esp_timer_get_time() / 1000ULL;
         }
         
-        if (millis() - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
+        uint64_t now = esp_timer_get_time() / 1000ULL;
+        if (now - provisioning_start > IMPROV_WIFI_TIMEOUT_MS) {
             ESP_LOGW(TAG, "[Improv WiFi BLE] Provisioning timeout (5 minutes) - restarting device");
             improv_provisioning_active = false;
             provisioning_start = 0;
@@ -171,12 +171,12 @@ void wifi_improv_loop() {
             if (NimBLEDevice::getInitialized()) {
                 ESP_LOGI(TAG, "[Improv WiFi BLE] Deinitializing BLE...");
                 NimBLEDevice::deinit(true);
-                delay(200);  // Give BLE time to fully shut down
+                vTaskDelay(pdMS_TO_TICKS(200));  // Give BLE time to fully shut down
             }
             
             ESP_LOGI(TAG, "[Improv WiFi BLE] Restarting device after timeout...");
-            delay(1000);  // Give time for serial output to flush
-            ESP.restart();  // Restart the device after timeout
+            vTaskDelay(pdMS_TO_TICKS(1000));  // Give time for serial output to flush
+            esp_restart();  // Restart the device after timeout
         }
     }
     #endif
