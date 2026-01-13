@@ -20,11 +20,10 @@
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include <string.h>
 #define TAG "display"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 // ESP-IDF SPI handle
 static spi_device_handle_t spi_handle = NULL;
@@ -151,13 +150,13 @@ static spi_device_handle_t spi_handle = NULL;
         
         // Reset display
         gpio_set_level((gpio_num_t)TFT_RST, 0);
-        delay(10);
+        vTaskDelay(pdMS_TO_TICKS(10));
         gpio_set_level((gpio_num_t)TFT_RST, 1);
-        delay(120);  // Wait for display to stabilize after reset
+        vTaskDelay(pdMS_TO_TICKS(120));  // Wait for display to stabilize after reset
         
         // Initialize ILI9341 with complete sequence
         ili9341_send_cmd(ILI9341_SWRESET);
-        delay(120);
+        vTaskDelay(pdMS_TO_TICKS(120));
         
         // Power Control 1
         uint8_t pwr1_data[] = {0x23};
@@ -230,11 +229,11 @@ static spi_device_handle_t spi_handle = NULL;
         
         // Sleep out
         ili9341_send_cmd(ILI9341_SLPOUT);
-        delay(120);
+        vTaskDelay(pdMS_TO_TICKS(120));
         
         // Display on
         ili9341_send_cmd(ILI9341_DISPLAYON);
-        delay(10);
+        vTaskDelay(pdMS_TO_TICKS(10));
         
         // Enable backlight
         gpio_set_level((gpio_num_t)TFT_BL, 1);

@@ -15,15 +15,21 @@
 // Project headers
 #include "config.h"
 #include "display/lvgl_touch.h"
+#include "system/esp_idf_compat.h"  // For gpio_isr_handler_t
 
 // System/Standard library headers
 // ESP-IDF framework headers
 #include <driver/gpio.h>
 #include <esp_log.h>
+#include <esp_timer.h>
+#include <esp_rom_sys.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #define TAG "touch"
 
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
+// GPIO level constants
+#define HIGH 1
+#define LOW 0
 
 // Arduino map() function compatibility
 static inline long map(long x, long in_min, long in_max, long out_min, long out_max) {
@@ -55,18 +61,24 @@ static int16_t touch_y = 0;
 
 // IRQ pin monitoring
 static volatile bool irq_triggered = false;
-static volatile unsigned long last_irq_time = 0;
+static volatile uint64_t last_irq_time = 0;
 static int last_irq_state = -1;
-static const unsigned long IRQ_DEBOUNCE_MS = 50;  // Debounce time: ignore interrupts within 50ms
+static const uint64_t IRQ_DEBOUNCE_MS = 50;  // Debounce time: ignore interrupts within 50ms
 
 // IRQ interrupt handler
-void IRAM_ATTR irq_handler() {
-    unsigned long now = millis();
+void IRAM_ATTR irq_handler(void* arg) {
+    uint64_t now = esp_timer_get_time() / 1000ULL;
     // Debounce: only set flag if enough time has passed since last interrupt
     if (now - last_irq_time > IRQ_DEBOUNCE_MS) {
         irq_triggered = true;
         last_irq_time = now;
     }
+}
+
+// Wrapper function that matches voidFuncPtr signature (void (*)(void))
+// This is called by gpio_isr_handler_wrapper
+static void IRAM_ATTR irq_handler_wrapper_void(void) {
+    irq_handler(NULL);
 }
 
 /**
@@ -79,17 +91,17 @@ static uint16_t xpt2046_read(uint8_t command) {
     
     // Touch screen uses its own SPI bus with custom pins
     // Bit-bang SPI for touch screen (since it uses different pins than LCD SPI)
-    digitalWrite(TOUCH_CS, LOW);
-    delayMicroseconds(1);
+    gpio_set_level((gpio_num_t)TOUCH_CS, 0);
+    esp_rom_delay_us(1);
     
     // Send command byte (MSB first, SPI mode 0: CPOL=0, CPHA=0)
     uint8_t cmd = command;
     for (int i = 7; i >= 0; i--) {
-        digitalWrite(TOUCH_SCLK, LOW);
-        digitalWrite(TOUCH_MOSI, (cmd >> i) & 0x01);
-        delayMicroseconds(1);
-        digitalWrite(TOUCH_SCLK, HIGH);
-        delayMicroseconds(1);
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 0);
+        gpio_set_level((gpio_num_t)TOUCH_MOSI, (cmd >> i) & 0x01);
+        esp_rom_delay_us(1);
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 1);
+        esp_rom_delay_us(1);
     }
     
     // Read 12-bit data (2 bytes, MSB first)
@@ -98,27 +110,27 @@ static uint16_t xpt2046_read(uint8_t command) {
     
     // Read high byte
     for (int i = 7; i >= 0; i--) {
-        digitalWrite(TOUCH_SCLK, LOW);
-        delayMicroseconds(1);
-        digitalWrite(TOUCH_SCLK, HIGH);
-        if (digitalRead(TOUCH_MISO)) {
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 0);
+        esp_rom_delay_us(1);
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 1);
+        if (gpio_get_level((gpio_num_t)TOUCH_MISO)) {
             high_byte |= (1 << i);
         }
-        delayMicroseconds(1);
+        esp_rom_delay_us(1);
     }
     
     // Read low byte
     for (int i = 7; i >= 0; i--) {
-        digitalWrite(TOUCH_SCLK, LOW);
-        delayMicroseconds(1);
-        digitalWrite(TOUCH_SCLK, HIGH);
-        if (digitalRead(TOUCH_MISO)) {
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 0);
+        esp_rom_delay_us(1);
+        gpio_set_level((gpio_num_t)TOUCH_SCLK, 1);
+        if (gpio_get_level((gpio_num_t)TOUCH_MISO)) {
             low_byte |= (1 << i);
         }
-        delayMicroseconds(1);
+        esp_rom_delay_us(1);
     }
     
-    digitalWrite(TOUCH_CS, HIGH);
+    gpio_set_level((gpio_num_t)TOUCH_CS, 1);
     
     // Combine bytes: XPT2046 returns 12-bit data
     data = ((high_byte << 8) | low_byte) >> 4;
@@ -192,31 +204,86 @@ void lvgl_touch_init() {
     ESP_LOGI(TAG, "[Touch] Initializing touch controller...");
     
     // Configure CS pin
-    pinMode(TOUCH_CS, OUTPUT);
-    digitalWrite(TOUCH_CS, HIGH);
+    gpio_config_t cs_conf = {};
+    cs_conf.pin_bit_mask = (1ULL << TOUCH_CS);
+    cs_conf.mode = GPIO_MODE_OUTPUT;
+    cs_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    cs_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    cs_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&cs_conf);
+    gpio_set_level((gpio_num_t)TOUCH_CS, 1);
     ESP_LOGI(TAG, "[Touch] CS pin configured: GPIO%d", TOUCH_CS);
     
     // Initialize touch SPI pins (separate SPI bus: GPIO25, GPIO32, GPIO39)
-    pinMode(TOUCH_SCLK, OUTPUT);
-    pinMode(TOUCH_MOSI, OUTPUT);
-    pinMode(TOUCH_MISO, INPUT);
-    digitalWrite(TOUCH_SCLK, HIGH);  // Idle high for SPI mode 0
+    gpio_config_t sclk_conf = {};
+    sclk_conf.pin_bit_mask = (1ULL << TOUCH_SCLK);
+    sclk_conf.mode = GPIO_MODE_OUTPUT;
+    sclk_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    sclk_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    sclk_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&sclk_conf);
+    
+    gpio_config_t mosi_conf = {};
+    mosi_conf.pin_bit_mask = (1ULL << TOUCH_MOSI);
+    mosi_conf.mode = GPIO_MODE_OUTPUT;
+    mosi_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    mosi_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    mosi_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&mosi_conf);
+    
+    gpio_config_t miso_conf = {};
+    miso_conf.pin_bit_mask = (1ULL << TOUCH_MISO);
+    miso_conf.mode = GPIO_MODE_INPUT;
+    miso_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    miso_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    miso_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&miso_conf);
+    
+    gpio_set_level((gpio_num_t)TOUCH_SCLK, 1);  // Idle high for SPI mode 0
     ESP_LOGI(TAG, "[Touch] SPI pins configured: SCLK=GPIO%d, MOSI=GPIO%d, MISO=GPIO%d", 
               TOUCH_SCLK, TOUCH_MOSI, TOUCH_MISO);
     
     // Configure IRQ pin
     if (TOUCH_IRQ >= 0) {
-        pinMode(TOUCH_IRQ, INPUT | INPUT_PULLUP_FLAG);
-        last_irq_state = digitalRead(TOUCH_IRQ);
-        // Use FALLING edge only (LOW = pressed) to reduce false triggers
-        attachInterrupt(digitalPinToInterrupt(TOUCH_IRQ), irq_handler, FALLING);
+        // Check if pin is input-only (GPIO34, GPIO35, GPIO36, GPIO39 on ESP32)
+        bool is_input_only = (TOUCH_IRQ == 34 || TOUCH_IRQ == 35 || TOUCH_IRQ == 36 || TOUCH_IRQ == 39);
+        
+        gpio_config_t irq_conf = {};
+        irq_conf.pin_bit_mask = (1ULL << TOUCH_IRQ);
+        irq_conf.mode = GPIO_MODE_INPUT;
+        if (is_input_only) {
+            irq_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+            irq_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        } else {
+            irq_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+            irq_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        }
+        irq_conf.intr_type = GPIO_INTR_NEGEDGE;  // FALLING edge
+        gpio_config(&irq_conf);
+        
+        last_irq_state = gpio_get_level((gpio_num_t)TOUCH_IRQ);
+        
+        // Store handler in gpio_isr_handlers for the wrapper to call
+        extern gpio_isr_handler_t gpio_isr_handlers[];
+        extern void IRAM_ATTR gpio_isr_handler_wrapper(void* arg);
+        
+        // Store the wrapper in gpio_isr_handlers so gpio_isr_handler_wrapper can call it
+        if (TOUCH_IRQ < GPIO_NUM_MAX) {
+            gpio_isr_handlers[TOUCH_IRQ].pin = (gpio_num_t)TOUCH_IRQ;
+            gpio_isr_handlers[TOUCH_IRQ].func = irq_handler_wrapper_void;
+            gpio_isr_handlers[TOUCH_IRQ].type = GPIO_INTR_NEGEDGE;
+        }
+        
+        // Add ISR handler - use the wrapper function
+        gpio_isr_handler_add((gpio_num_t)TOUCH_IRQ, gpio_isr_handler_wrapper, (void*)(intptr_t)TOUCH_IRQ);
+        
         ESP_LOGI(TAG, "[Touch] IRQ pin configured: GPIO%d (initial state: %s, FALLING edge)", 
-                  TOUCH_IRQ, last_irq_state == LOW ? "LOW (pressed)" : "HIGH (not pressed)");
+                  TOUCH_IRQ, last_irq_state == 0 ? "LOW (pressed)" : "HIGH (not pressed)");
     } else {
         ESP_LOGW(TAG, "[Touch] WARNING: No IRQ pin configured!");
     }
     
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
     
     // Test touch controller by reading initial values
     uint16_t test_x = xpt2046_read(XPT2046_CMD_X);
@@ -241,7 +308,7 @@ void lvgl_touch_init() {
 
 void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     static bool last_pressed = false;
-    static unsigned long last_log_time = 0;
+    static uint64_t last_log_time = 0;
     static unsigned long touch_count = 0;
     
     bool pressed = false;
@@ -250,8 +317,8 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
     
     // Check IRQ pin
     if (TOUCH_IRQ >= 0) {
-        int irq_state = digitalRead(TOUCH_IRQ);
-        irq_pressed = (irq_state == LOW);
+        int irq_state = gpio_get_level((gpio_num_t)TOUCH_IRQ);
+        irq_pressed = (irq_state == 0);
         
         // Update IRQ state (don't log state changes - too noisy, especially during BLE activity)
         if (irq_state != last_irq_state) {
@@ -303,7 +370,7 @@ void lvgl_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         touch_pressed = true;
         
         // Log touch detection (throttled to avoid spam)
-        unsigned long now = millis();
+        uint64_t now = esp_timer_get_time() / 1000ULL;
         if (now - last_log_time > 200 || !last_pressed) {  // Log every 200ms or on state change
             ESP_LOGI(TAG, "[Touch] Pressed: X=%d Y=%d (IRQ=%d, Pressure=%d)", 
                      x, y, irq_pressed, pressure_pressed);
