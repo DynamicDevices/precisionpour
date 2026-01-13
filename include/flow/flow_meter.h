@@ -60,6 +60,6 @@ float flow_meter_get_total_volume_liters();
 void flow_meter_reset_volume();
 
 // Get pulse count (for debugging)
-unsigned long flow_meter_get_pulse_count();
+uint64_t flow_meter_get_pulse_count();
 
 #endif // FLOW_METER_H
