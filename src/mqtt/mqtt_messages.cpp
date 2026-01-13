@@ -13,17 +13,15 @@
 
 // System/Standard library headers
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <mqtt_client.h>  // ESP-IDF MQTT client component
 #include <cstring>
 #include <string.h>
 #define TAG "mqtt_msg"
 
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
-
 // Activity tracking
-static unsigned long last_activity_time = 0;
-static const unsigned long ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last TX/RX
+static uint64_t last_activity_time = 0;
+static const uint64_t ACTIVITY_TIMEOUT_MS = 500;  // Show activity for 500ms after last TX/RX
 
 // MQTT callback function (can be set by user)
 static void (*user_callback)(char* topic, byte* payload, unsigned int length) = NULL;
@@ -147,7 +145,7 @@ void mqtt_messages_set_callback(void (*callback)(char* topic, byte* payload, uns
 }
 
 void mqtt_messages_mark_activity() {
-    last_activity_time = millis();
+    last_activity_time = esp_timer_get_time() / 1000ULL;
 }
 
 bool mqtt_messages_has_activity() {
@@ -155,10 +153,11 @@ bool mqtt_messages_has_activity() {
     if (last_activity_time == 0) {
         return false;
     }
-    unsigned long now = millis();
-    // Handle millis() overflow (happens every ~49 days)
+    uint64_t now = esp_timer_get_time() / 1000ULL;
+    // With uint64_t, overflow won't occur for ~584,000 years, so no overflow check needed
+    // But keep the check for safety in case of time going backwards (shouldn't happen)
     if (now < last_activity_time) {
-        // Overflow occurred, reset
+        // Time went backwards (shouldn't happen), reset
         last_activity_time = 0;
         return false;
     }

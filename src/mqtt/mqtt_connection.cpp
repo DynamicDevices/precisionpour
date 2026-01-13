@@ -15,13 +15,11 @@
 // System/Standard library headers
 #include <esp_log.h>
 #include <esp_netif.h>
+#include <esp_timer.h>
 #include <mqtt_client.h>  // ESP-IDF MQTT client component
 #include <cstring>
 #include <string.h>
 #define TAG "mqtt_conn"
-
-// Project compatibility headers
-#include "system/esp_idf_compat.h"
 
 static esp_mqtt_client_handle_t mqtt_client_handle = NULL;
 
@@ -30,8 +28,8 @@ static char mqtt_client_id[64] = {0};
 static char mqtt_subscribe_topic[128] = {0};
 static char mqtt_paid_topic[128] = {0};  // Topic for "paid" command
 static char mqtt_uri[256] = {0};  // MQTT broker URI (must persist for connection)
-static unsigned long last_reconnect_attempt = 0;
-static unsigned long last_ip_change = 0;  // Track when IP address changed (for DNS readiness)
+static uint64_t last_reconnect_attempt = 0;
+static uint64_t last_ip_change = 0;  // Track when IP address changed (for DNS readiness)
 static bool mqtt_connected = false;
 static bool mqtt_connecting = false;  // Track if we're in the process of connecting
 
@@ -125,7 +123,7 @@ bool mqtt_connection_reconnect(const char* chip_id) {
     
     // Check if IP address has changed (new connection)
     static String last_ip_str = "";
-    unsigned long now = millis();
+    uint64_t now = esp_timer_get_time() / 1000ULL;
     if (ip != last_ip_str) {
         // IP address changed - reset the timer
         last_ip_str = ip;
@@ -147,10 +145,10 @@ bool mqtt_connection_reconnect(const char* chip_id) {
         return false;
     }
     
-    unsigned long time_since_ip = now - last_ip_change;
+    uint64_t time_since_ip = now - last_ip_change;
     if (time_since_ip < 3000) {
         // Wait at least 3 seconds after IP assignment for DNS to be ready
-        ESP_LOGI(TAG, "[MQTT] Waiting for DNS to be ready... (%lu ms since IP)", time_since_ip);
+        ESP_LOGI(TAG, "[MQTT] Waiting for DNS to be ready... (%llu ms since IP)", (unsigned long long)time_since_ip);
         mqtt_connected = false;
         mqtt_connecting = false;
         return false;
@@ -213,7 +211,7 @@ void mqtt_connection_loop() {
     // But we check connection and reconnect if needed
     // Don't try to reconnect if we're already connected or in the process of connecting
     if (!mqtt_connection_is_connected() && !mqtt_connection_is_connecting()) {
-        unsigned long now = millis();
+        uint64_t now = esp_timer_get_time() / 1000ULL;
         if (now - last_reconnect_attempt >= MQTT_RECONNECT_DELAY) {
             last_reconnect_attempt = now;
             
