@@ -28,6 +28,7 @@
 #if !TEST_MODE
     // Include the Precision Pour logo image (used for both splashscreen and main page)
     #include "images/precision_pour_logo.h"
+    #include "rle_decompress.h"
 #endif
 
 static lv_obj_t *splashscreen_img = NULL;
@@ -84,8 +85,19 @@ void splashscreen_init() {
         if (precision_pour_logo.data == NULL) {
             ESP_LOGI(TAG, "[Splashscreen] ERROR: Logo image data is NULL!");
         } else {
-            ESP_LOGI(TAG, "[Splashscreen] Logo image data is valid, setting source...");
-            lv_img_set_src(splashscreen_img, &precision_pour_logo);
+            ESP_LOGI(TAG, "[Splashscreen] Logo image data is valid, decompressing if needed...");
+            // Get decompressed image (handles RLE compression if enabled)
+            const lv_img_dsc_t* logo_img = rle_get_image(
+                &precision_pour_logo,
+                PRECISION_POUR_LOGO_IS_COMPRESSED,
+                PRECISION_POUR_LOGO_IS_COMPRESSED ? PRECISION_POUR_LOGO_UNCOMPRESSED_SIZE : precision_pour_logo.data_size
+            );
+            
+            if (logo_img == NULL) {
+                ESP_LOGE(TAG, "[Splashscreen] ERROR: Failed to get logo image!");
+            } else {
+                lv_img_set_src(splashscreen_img, logo_img);
+            }
         }
         
         // Center the logo on the screen (logo is 280x80, display is 320x240)

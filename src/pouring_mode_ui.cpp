@@ -18,6 +18,7 @@
 #include "images/precision_pour_logo.h"
 #include "mqtt_manager.h"
 #include "pouring_mode_ui.h"
+#include "rle_decompress.h"
 #include "wifi_manager.h"
 
 // System/Standard library headers
@@ -122,8 +123,19 @@ void pouring_mode_init() {
         return;
     }
     
-    // Set logo image source
-    lv_img_set_src(logo_img, &precision_pour_logo);
+    // Get decompressed image (handles RLE compression if enabled)
+    const lv_img_dsc_t* logo_img_data = rle_get_image(
+        &precision_pour_logo,
+        PRECISION_POUR_LOGO_IS_COMPRESSED,
+        PRECISION_POUR_LOGO_IS_COMPRESSED ? PRECISION_POUR_LOGO_UNCOMPRESSED_SIZE : precision_pour_logo.data_size
+    );
+    
+    if (logo_img_data == NULL) {
+        ESP_LOGE(TAG, "[Pouring UI] ERROR: Failed to get logo image!");
+    } else {
+        // Set logo image source
+        lv_img_set_src(logo_img, logo_img_data);
+    }
     
     // Center the logo in the container
     lv_obj_align(logo_img, LV_ALIGN_CENTER, 0, 0);
