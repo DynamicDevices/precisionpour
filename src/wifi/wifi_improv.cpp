@@ -294,42 +294,88 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
         }
         
         case ESP_GATTS_CREATE_EVT: {
+            if (param->create.status != ESP_GATT_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Service creation failed: status=%d", param->create.status);
+                improv_error = IMPROV_ERROR_INVALID_RPC;
+                update_error_characteristic();
+                improv_provisioning_active = false;
+                break;
+            }
             improv_service_handle = param->create.service_handle;
+            if (improv_service_handle == 0) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Service creation returned invalid handle");
+                improv_provisioning_active = false;
+                break;
+            }
             ESP_LOGI(TAG, "[Improv WiFi BLE] Service created, adding characteristics...");
             
             // Create Status characteristic (read, notify)
-            esp_ble_gatts_add_char(improv_service_handle, &improv_status_uuid,
+            esp_err_t ret = esp_ble_gatts_add_char(improv_service_handle, &improv_status_uuid,
                                    ESP_GATT_PERM_READ,
                                    ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                    NULL, NULL);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to add Status characteristic: %s", esp_err_to_name(ret));
+                improv_provisioning_active = false;
+                break;
+            }
             
             // Create Error characteristic (read, notify)
-            esp_ble_gatts_add_char(improv_service_handle, &improv_error_uuid,
+            ret = esp_ble_gatts_add_char(improv_service_handle, &improv_error_uuid,
                                    ESP_GATT_PERM_READ,
                                    ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                    NULL, NULL);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to add Error characteristic: %s", esp_err_to_name(ret));
+                improv_provisioning_active = false;
+                break;
+            }
             
             // Create RPC characteristic (write, notify)
-            esp_ble_gatts_add_char(improv_service_handle, &improv_rpc_uuid,
+            ret = esp_ble_gatts_add_char(improv_service_handle, &improv_rpc_uuid,
                                    ESP_GATT_PERM_WRITE,
                                    ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                    NULL, NULL);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to add RPC characteristic: %s", esp_err_to_name(ret));
+                improv_provisioning_active = false;
+                break;
+            }
             
             // Create Capabilities characteristic (read)
             // BLE capability = 0x01
+            static uint8_t capabilities_data = 0x01;
             esp_attr_value_t capabilities_val;
             memset(&capabilities_val, 0, sizeof(esp_attr_value_t));
             capabilities_val.attr_max_len = 1;
             capabilities_val.attr_len = 1;
-            capabilities_val.attr_value[0] = 0x01;
-            esp_ble_gatts_add_char(improv_service_handle, &improv_capabilities_uuid,
+            capabilities_val.attr_value = &capabilities_data;
+            ret = esp_ble_gatts_add_char(improv_service_handle, &improv_capabilities_uuid,
                                    ESP_GATT_PERM_READ,
                                    ESP_GATT_CHAR_PROP_BIT_READ,
                                    &capabilities_val, NULL);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to add Capabilities characteristic: %s", esp_err_to_name(ret));
+                improv_provisioning_active = false;
+                break;
+            }
+
+            // Start the service once characteristics are enqueued
+            ret = esp_ble_gatts_start_service(improv_service_handle);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to start service: %s", esp_err_to_name(ret));
+                improv_provisioning_active = false;
+                break;
+            }
             break;
         }
         
         case ESP_GATTS_ADD_CHAR_EVT: {
+            if (param->add_char.status != ESP_GATT_OK) {
+                ESP_LOGE(TAG, "[Improv WiFi BLE] Add characteristic failed: status=%d", param->add_char.status);
+                improv_provisioning_active = false;
+                break;
+            }
             // Store characteristic handles
             if (memcmp(param->add_char.char_uuid.uuid.uuid128, improv_status_uuid.uuid.uuid128, 16) == 0) {
                 improv_status_handle = param->add_char.attr_handle;
@@ -499,6 +545,18 @@ void wifi_improv_start_provisioning() {
         return;
     }
     
+    // Set a friendly BLE device name so the user can easily find it in the Improv client.
+    // Format: precisionpour-<last3mac> (e.g. precisionpour-2D9200)
+    uint8_t mac[6] = {0};
+    char ble_name[32] = {0};
+    if (esp_efuse_mac_get_default(mac) == ESP_OK) {
+        snprintf(ble_name, sizeof(ble_name), "precisionpour-%02X%02X%02X", mac[3], mac[4], mac[5]);
+    } else {
+        snprintf(ble_name, sizeof(ble_name), "precisionpour");
+    }
+    esp_ble_gap_set_device_name(ble_name);
+    ESP_LOGI(TAG, "[Improv WiFi BLE] BLE device name: %s", ble_name);
+
     // Register GATT and GAP callbacks
     ret = esp_ble_gatts_register_callback(gatts_profile_event_handler);
     if (ret != ESP_OK) {
