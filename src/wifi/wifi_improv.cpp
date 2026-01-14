@@ -125,6 +125,7 @@ static uint16_t improv_status_handle = 0;
 static uint16_t improv_error_handle = 0;
 static uint16_t improv_rpc_handle = 0;
 static uint16_t improv_capabilities_handle = 0;
+static bool improv_service_started = false;
 
 // Improv state
 static uint8_t improv_status = IMPROV_STATUS_STOPPED;
@@ -307,6 +308,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
                 improv_provisioning_active = false;
                 break;
             }
+            improv_service_started = false;
+            improv_status_handle = 0;
+            improv_error_handle = 0;
+            improv_rpc_handle = 0;
+            improv_capabilities_handle = 0;
             ESP_LOGI(TAG, "[Improv WiFi BLE] Service created, adding characteristics...");
             
             // Create Status characteristic (read, notify)
@@ -359,14 +365,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
                 improv_provisioning_active = false;
                 break;
             }
-
-            // Start the service once characteristics are enqueued
-            ret = esp_ble_gatts_start_service(improv_service_handle);
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to start service: %s", esp_err_to_name(ret));
-                improv_provisioning_active = false;
-                break;
-            }
             break;
         }
         
@@ -389,6 +387,23 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
             } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, improv_capabilities_uuid.uuid.uuid128, 16) == 0) {
                 improv_capabilities_handle = param->add_char.attr_handle;
                 ESP_LOGI(TAG, "[Improv WiFi BLE] Capabilities characteristic added");
+            }
+
+            // Start the service only after all characteristics have been added.
+            // esp_ble_gatts_add_char() is asynchronous; starting too early can yield an incomplete DB.
+            if (!improv_service_started &&
+                improv_service_handle != 0 &&
+                improv_status_handle != 0 &&
+                improv_error_handle != 0 &&
+                improv_rpc_handle != 0 &&
+                improv_capabilities_handle != 0) {
+                esp_err_t ret = esp_ble_gatts_start_service(improv_service_handle);
+                if (ret != ESP_OK) {
+                    ESP_LOGE(TAG, "[Improv WiFi BLE] Failed to start service: %s", esp_err_to_name(ret));
+                    improv_provisioning_active = false;
+                } else {
+                    improv_service_started = true;
+                }
             }
             break;
         }
