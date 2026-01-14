@@ -1,3 +1,4 @@
 ## IDF Component Manager Manifest File
-dependencies:
-  improv/improv: "^1.2.5"
+## Note: Improv WiFi is implemented using native ESP-IDF BLE APIs, not the improv component
+## dependencies:
+##   improv/improv: "^1.2.5"

@@ -246,20 +246,42 @@ menu "PrecisionPour Configuration"
 
             config WIFI_IMPROV_BLE
                 bool "Use Improv WiFi BLE Provisioning"
+                depends on BT_ENABLED
                 help
-                    Use BLE-based Improv WiFi provisioning for wireless setup
+                    Use BLE-based Improv WiFi provisioning for wireless setup.
+                    This enables the Improv WiFi protocol over Bluetooth Low Energy,
+                    allowing devices to be configured via the Improv WiFi web client
+                    or mobile apps. See https://www.improv-wifi.com/ for more information.
+                    Note: This requires Bluetooth to be enabled (CONFIG_BT_ENABLED).
         endchoice
 
         config USE_IMPROV_WIFI
-            int
-            default 1 if WIFI_IMPROV_BLE
-            default 0
+            bool "Enable Improv WiFi Support"
+            default y if WIFI_IMPROV_BLE
+            default n
+            depends on BT_ENABLED
+            help
+                Enable Improv WiFi BLE provisioning support.
+                When enabled, the device will advertise the Improv WiFi service
+                and can be configured using Improv-compatible clients.
+                This option is automatically enabled if WIFI_IMPROV_BLE is selected.
+                Note: This requires Bluetooth to be enabled (CONFIG_BT_ENABLED).
+
+        config IMPROV_START_BY_DEFAULT
+            bool "Start Improv WiFi by Default"
+            default n
+            depends on USE_IMPROV_WIFI && BT_ENABLED
+            help
+                Start Improv WiFi provisioning immediately on boot.
+                If disabled, Improv will only start if WiFi connection fails.
+                When enabled, the device will start in provisioning mode
+                and wait for WiFi credentials via BLE before attempting connection.
 
         config IMPROV_WIFI_TIMEOUT_MS
             int "Improv WiFi Timeout (ms)"
             range 60000 1800000
             default 300000
-            depends on WIFI_IMPROV_BLE
+            depends on WIFI_IMPROV_BLE && BT_ENABLED
             help
                 Timeout for Improv WiFi provisioning (5 minutes default)
 

@@ -18,6 +18,7 @@
 #include "wifi/wifi_manager.h"
 #include "wifi/wifi_credentials.h"
 #include "wifi/wifi_improv.h"
+#include "system/esp_system_compat.h"
 
 // System/Standard library headers
 // ESP-IDF framework headers
@@ -43,11 +44,7 @@
 #include "system/esp_system_compat.h"
 
 // Third-party library headers (if enabled)
-#if USE_IMPROV_WIFI
-    #include <ImprovWiFiBLE.h>
-    #include <NimBLEAdvertising.h>
-    #include <NimBLEDevice.h>
-#endif
+// Note: Improv WiFi now uses ESP-IDF native BLE APIs (no Arduino libraries)
 
 static bool wifi_connected = false;
 static unsigned long last_reconnect_attempt = 0;
@@ -271,6 +268,16 @@ static bool connect_to_wifi(const String& ssid, const String& password) {
 bool wifi_manager_init() {
     ESP_LOGI(TAG, "=== Initializing WiFi ===");
     
+    // Check if Improv should start by default
+    #if USE_IMPROV_WIFI
+    if (IMPROV_START_BY_DEFAULT) {
+        ESP_LOGI(TAG, "[WiFi] Improv WiFi configured to start by default");
+        ESP_LOGI(TAG, "[WiFi] Starting Improv WiFi provisioning mode...");
+        wifi_manager_start_provisioning();
+        return false;  // Not connected yet, provisioning in progress
+    }
+    #endif
+    
     // Set WiFi component log level to WARN to reduce verbose output
     // (INFO level can produce empty log lines in some ESP-IDF versions)
     esp_log_level_set("wifi", ESP_LOG_WARN);
@@ -287,6 +294,23 @@ bool wifi_manager_init() {
     
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
+    // Set custom hostname for DHCP (using SOC UID for uniqueness)
+    // Format: precisionpour-<SOC_UID> (e.g., precisionpour-1234567890ABCDEF)
+    char soc_uid[17] = {0};  // 16 hex chars + null terminator for 64-bit SOC UID
+    if (get_soc_uid_string(soc_uid, sizeof(soc_uid))) {
+        char hostname[33];  // "precisionpour-" (15) + SOC UID (16) + null = 32 chars
+        snprintf(hostname, sizeof(hostname), "precisionpour-%s", soc_uid);
+        esp_err_t err = esp_netif_set_hostname(sta_netif, hostname);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "[WiFi] Hostname set to: %s", hostname);
+        } else {
+            ESP_LOGW(TAG, "[WiFi] Failed to set hostname: %s", esp_err_to_name(err));
+        }
+    } else {
+        // Fallback to default if SOC UID can't be retrieved
+        ESP_LOGW(TAG, "[WiFi] Could not get SOC UID, using default hostname");
+    }
     
     // Set WiFi component log level to WARN to reduce verbose output
     // (INFO level can produce empty log lines in some ESP-IDF versions)
@@ -312,7 +336,19 @@ bool wifi_manager_init() {
                                                         NULL));
     
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));  // Disable power saving
+    
+    // Set WiFi power save mode based on BLE configuration
+    // When BLE is enabled, WiFi modem sleep must be enabled for coexistence
+    #if USE_IMPROV_WIFI
+    // Enable WiFi modem sleep when BLE is enabled (required for coexistence)
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));
+    ESP_LOGI(TAG, "[WiFi] Power save mode set to MIN_MODEM (required for BLE coexistence)");
+    #else
+    // No BLE, so we can disable power saving for better WiFi performance
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+    ESP_LOGI(TAG, "[WiFi] Power save disabled (no BLE)");
+    #endif
+    
     ESP_ERROR_CHECK(esp_wifi_start());
     
     String ssid, password;
@@ -351,11 +387,14 @@ bool wifi_manager_init() {
         return true;
     }
     
-    // Connection failed - start Improv WiFi provisioning if enabled
+    // Connection failed - start Improv WiFi provisioning if enabled and not started by default
     #if USE_IMPROV_WIFI
-    if (!wifi_connected) {
+    if (!wifi_connected && !IMPROV_START_BY_DEFAULT) {
         ESP_LOGW(TAG, "[WiFi] Connection failed - starting Improv WiFi provisioning...");
         wifi_manager_start_provisioning();
+        return false;  // Not connected yet, provisioning in progress
+    } else if (!wifi_connected && IMPROV_START_BY_DEFAULT) {
+        ESP_LOGI(TAG, "[WiFi] Connection failed, but Improv already started by default");
         return false;  // Not connected yet, provisioning in progress
     }
     #else

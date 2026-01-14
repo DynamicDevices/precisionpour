@@ -150,8 +150,25 @@ void on_mqtt_message(char* topic, byte* payload, unsigned int length) {
     // Legacy commands can be added here if needed
 }
 
+// ets_printf is declared in esp_rom_sys.h, no need for forward declaration
+
+// Early logging function (before ESP-IDF logging is initialized)
+// Uses esp_rom_printf which works before ESP-IDF logging system is ready
+static void early_log(const char* msg) {
+    esp_rom_printf("[EARLY] %s\n", msg);
+}
+
+// Constructor function to log when static initialization completes
+// This will run during static initialization, before app_main()
+__attribute__((constructor))
+static void static_init_logger(void) {
+    early_log("Static initialization starting...");
+    early_log("Static initialization complete - about to call app_main()");
+}
+
 // ESP-IDF entry point
 extern "C" void app_main() {
+    early_log("app_main() called - static initialization passed!");
     
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -226,17 +243,29 @@ extern "C" void app_main() {
         ESP_LOGI(TAG_MAIN, "=====================================");
         ESP_LOGI(TAG_MAIN, "Startup time: (NTP not synced yet)");
     }
-    ESP_LOGI(TAG_MAIN, "Chip model: %s", ESP.getChipModel());
-    ESP_LOGI(TAG_MAIN, "Chip revision: %d", ESP.getChipRevision());
-    ESP_LOGI(TAG_MAIN, "CPU frequency: %d MHz", ESP.getCpuFreqMHz());
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to get chip model...");
+    const char* chip_model = ESP.getChipModel();
+    ESP_LOGI(TAG_MAIN, "Chip model: %s", chip_model);
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to get chip revision...");
+    uint8_t chip_rev = ESP.getChipRevision();
+    ESP_LOGI(TAG_MAIN, "Chip revision: %d", chip_rev);
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to get CPU frequency...");
+    uint32_t cpu_freq = ESP.getCpuFreqMHz();
+    ESP_LOGI(TAG_MAIN, "CPU frequency: %d MHz", cpu_freq);
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to get flash size...");
     ESP_LOGI(TAG_MAIN, "Flash size: %d bytes", ESP.getFlashChipSize());
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to get free heap...");
     ESP_LOGI(TAG_MAIN, "Free heap: %d bytes", ESP.getFreeHeap());
+    ESP_LOGI(TAG_MAIN, "[DEBUG] System info complete");
     
     // Initialize backlight early so we can see the display
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to initialize backlight...");
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
+    ESP_LOGI(TAG_MAIN, "[DEBUG] Backlight initialized");
     
     // Initialize LVGL
+    ESP_LOGI(TAG_MAIN, "[DEBUG] About to initialize LVGL...");
     lv_init();
     ESP_LOGI(TAG_MAIN, "LVGL initialized");
     

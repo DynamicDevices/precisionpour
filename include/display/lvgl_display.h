@@ -20,7 +20,11 @@
 
 // Display buffer size (adjust based on available RAM)
 // Using 1/10 of screen size for double buffering
-#define LVGL_BUFFER_SIZE (DISPLAY_WIDTH * DISPLAY_HEIGHT / 10)
+// LVGL draw buffer size (partial rendering).
+// Larger buffers improve responsiveness; we keep single buffering to limit DRAM.
+// Larger buffer for better responsiveness (still partial rendering).
+// Note: We keep single buffering in the driver to control DRAM usage.
+#define LVGL_BUFFER_SIZE (DISPLAY_WIDTH * DISPLAY_HEIGHT / 6)
 
 /**
  * Initialize LVGL display driver

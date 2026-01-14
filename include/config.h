@@ -79,7 +79,16 @@
     // Note: CONFIG_WIFI_SSID is a string config from KConfig, available via sdkconfig.h
     #define WIFI_RECONNECT_DELAY CONFIG_WIFI_RECONNECT_DELAY
     #define USE_IMPROV_WIFI CONFIG_USE_IMPROV_WIFI
-    #define IMPROV_WIFI_TIMEOUT_MS CONFIG_IMPROV_WIFI_TIMEOUT_MS
+    #ifdef CONFIG_IMPROV_START_BY_DEFAULT
+        #define IMPROV_START_BY_DEFAULT CONFIG_IMPROV_START_BY_DEFAULT
+    #else
+        #define IMPROV_START_BY_DEFAULT 0  // Default: disabled
+    #endif
+    #ifdef CONFIG_IMPROV_WIFI_TIMEOUT_MS
+        #define IMPROV_WIFI_TIMEOUT_MS CONFIG_IMPROV_WIFI_TIMEOUT_MS
+    #else
+        #define IMPROV_WIFI_TIMEOUT_MS 300000  // Default: 5 minutes
+    #endif
     #define USE_SAVED_CREDENTIALS CONFIG_USE_SAVED_CREDENTIALS
     
     // MQTT Configuration
@@ -190,8 +199,9 @@
     #define FLOW_METER_PIN 26  // GPIO pin for flow meter interrupt
 
     // WiFi Provisioning Configuration
-    #define USE_IMPROV_WIFI 0  // Set to 1 to enable Improv WiFi BLE provisioning, 0 to disable
-    #define IMPROV_WIFI_TIMEOUT_MS 300000  // 5 minutes timeout for Improv WiFi provisioning (then restart)
+    #define USE_IMPROV_WIFI 0  // Set to 1 to enable Improv WiFi BLE provisioning, 0 to disable (Arduino: edit this file)
+    #define IMPROV_START_BY_DEFAULT 0  // Set to 1 to start Improv by default, 0 to start only on connection failure (Arduino: edit this file)
+    #define IMPROV_WIFI_TIMEOUT_MS 300000  // 5 minutes timeout for Improv WiFi provisioning (Arduino: edit this file)
     #define USE_SAVED_CREDENTIALS 1  // Set to 1 to use saved credentials from EEPROM, 0 to always use secrets.h
 
     // Cost configuration (for pouring mode)

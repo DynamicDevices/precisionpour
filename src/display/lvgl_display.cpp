@@ -25,6 +25,12 @@
 #include <string.h>
 #define TAG "display"
 
+// SPI clock for the display. 40MHz is typically fine for ESP32 + ILI9341 on short wires.
+// If you see artifacts or instability, drop to e.g. 32000000 or 27000000.
+#ifndef TFT_SPI_CLOCK_HZ
+#define TFT_SPI_CLOCK_HZ 40000000
+#endif
+
 // ESP-IDF SPI handle
 static spi_device_handle_t spi_handle = NULL;
     
@@ -127,7 +133,7 @@ static spi_device_handle_t spi_handle = NULL;
         
         // Configure SPI device
         spi_device_interface_config_t dev_cfg = {};
-        dev_cfg.clock_speed_hz = 27000000;  // 27 MHz
+        dev_cfg.clock_speed_hz = TFT_SPI_CLOCK_HZ;
         dev_cfg.mode = 0;
         dev_cfg.spics_io_num = TFT_CS;
         dev_cfg.queue_size = 1;
@@ -246,7 +252,6 @@ static spi_device_handle_t spi_handle = NULL;
 
 // Display buffer
 static lv_color_t buf1[LVGL_BUFFER_SIZE];
-static lv_color_t buf2[LVGL_BUFFER_SIZE];
 
 void lvgl_display_init() {
     // ESP-IDF: Initialize ILI9341
@@ -254,7 +259,8 @@ void lvgl_display_init() {
     
     // Initialize LVGL display driver
     lv_disp_draw_buf_t *draw_buf = (lv_disp_draw_buf_t *)malloc(sizeof(lv_disp_draw_buf_t));
-    lv_disp_draw_buf_init(draw_buf, buf1, buf2, LVGL_BUFFER_SIZE);
+    // Single buffer to reduce DRAM usage (double buffering costs ~2x LVGL_BUFFER_SIZE)
+    lv_disp_draw_buf_init(draw_buf, buf1, NULL, LVGL_BUFFER_SIZE);
     
     static lv_disp_drv_t disp_drv;
     lv_disp_drv_init(&disp_drv);
@@ -283,37 +289,59 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
     ili9341_set_window(area->x1, area->y1, area->x2, area->y2);
     
     // Send pixel data in chunks (SPI has max transfer size limits)
-    // Max chunk size: 4092 bytes (ESP-IDF default, but we'll use 4096 for safety)
-    const size_t max_chunk_bytes = 4096;
-    const size_t max_chunk_pixels = max_chunk_bytes / 2;  // 2 bytes per pixel
+    // Chunked transfer (larger chunks reduce SPI transaction overhead).
+    static constexpr size_t MAX_CHUNK_PIXELS = 4096; // 4096 px = 8192 bytes @ RGB565
     
     gpio_set_level((gpio_num_t)TFT_DC, 1);  // Data mode
     
-    // LVGL outputs RGB565 in RGB order: RRRRR GGGGGG BBBBB (bits 15-11: R, bits 10-5: G, bits 4-0: B)
-    // Byte swapping: swap high and low bytes of each 16-bit pixel
-    // This matches the behavior required by the display controller
-    // Example: 0xF800 (little-endian) -> 0x00F8 (byte-swapped)
+    // LVGL provides RGB565 in native endian order; ILI9341 expects MSB-first over SPI,
+    // so we byte-swap into a small reusable buffer (keeps colors correct).
     uint16_t *pixels = (uint16_t *)color_p;
     size_t remaining_pixels = pixel_count;
     size_t offset = 0;
-    
-    // Allocate buffer for byte-swapped pixels
-    static uint16_t swapped_buffer[4096];  // Max chunk size
-    const size_t max_buffer_pixels = sizeof(swapped_buffer) / sizeof(swapped_buffer[0]);
-    
-        while (remaining_pixels > 0) {
-            size_t chunk_pixels = (remaining_pixels > max_chunk_pixels) ? max_chunk_pixels : remaining_pixels;
-            
-            // Swap bytes for each pixel (required by display controller)
-            size_t buffer_pixels = (chunk_pixels > max_buffer_pixels) ? max_buffer_pixels : chunk_pixels;
-        for (size_t i = 0; i < buffer_pixels; i++) {
-            uint16_t pixel = pixels[offset + i];
-            // Swap high and low bytes: 0x1234 -> 0x3412
-            swapped_buffer[i] = ((pixel & 0xFF) << 8) | ((pixel >> 8) & 0xFF);
+
+    static uint16_t swapped_buffer[MAX_CHUNK_PIXELS];
+
+    while (remaining_pixels > 0) {
+        const size_t chunk_pixels = (remaining_pixels > MAX_CHUNK_PIXELS) ? MAX_CHUNK_PIXELS : remaining_pixels;
+
+        // Fast byte-swap: operate on 32-bit words where possible (swaps bytes within each 16-bit pixel)
+        size_t i = 0;
+
+        // Align input to 4 bytes; keep output aligned too by consuming 2 pixels when needed.
+        if ((((uintptr_t)(&pixels[offset]) & 0x3) != 0) && chunk_pixels >= 2) {
+            const uint16_t p0 = pixels[offset + 0];
+            const uint16_t p1 = pixels[offset + 1];
+            swapped_buffer[0] = (uint16_t)(((p0 & 0x00FF) << 8) | ((p0 & 0xFF00) >> 8));
+            swapped_buffer[1] = (uint16_t)(((p1 & 0x00FF) << 8) | ((p1 & 0xFF00) >> 8));
+            i = 2;
+        } else if ((((uintptr_t)(&pixels[offset]) & 0x3) != 0) && chunk_pixels == 1) {
+            const uint16_t p0 = pixels[offset + 0];
+            swapped_buffer[0] = (uint16_t)(((p0 & 0x00FF) << 8) | ((p0 & 0xFF00) >> 8));
+            i = 1;
         }
-        
+
+        const size_t remaining_after_align = (chunk_pixels > i) ? (chunk_pixels - i) : 0;
+        const size_t pairs = remaining_after_align / 2;
+
+        if (pairs > 0 && (((uintptr_t)swapped_buffer & 0x3) == 0)) {
+            const uint32_t *in32 = (const uint32_t *)(&pixels[offset + i]);
+            uint32_t *out32 = (uint32_t *)(&swapped_buffer[i]);
+            for (size_t j = 0; j < pairs; j++) {
+                const uint32_t v = in32[j];
+                out32[j] = ((v & 0x00FF00FFu) << 8) | ((v & 0xFF00FF00u) >> 8);
+            }
+            i += pairs * 2;
+        }
+
+        // Tail pixel (if odd count)
+        for (; i < chunk_pixels; i++) {
+            const uint16_t p = pixels[offset + i];
+            swapped_buffer[i] = (uint16_t)(((p & 0x00FF) << 8) | ((p & 0xFF00) >> 8));
+        }
+
         spi_transaction_t t = {};
-        t.length = buffer_pixels * 2 * 8;  // Length in bits
+        t.length = chunk_pixels * 2 * 8;  // Length in bits
         t.tx_buffer = swapped_buffer;
         t.flags = 0;  // No special flags
         
@@ -323,8 +351,8 @@ void lvgl_display_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color
             break;
         }
         
-        offset += buffer_pixels;
-        remaining_pixels -= buffer_pixels;
+        offset += chunk_pixels;
+        remaining_pixels -= chunk_pixels;
     }
     
     lv_disp_flush_ready(disp_drv);

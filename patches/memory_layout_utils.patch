@@ -1,0 +1,24 @@
+--- a/components/heap/port/memory_layout_utils.c
++++ b/components/heap/port/memory_layout_utils.c
+@@ -70,6 +70,20 @@ static void s_prepare_reserved_regions(soc_reserved_region_t *reserved, size_t c
+     memcpy(reserved, &soc_reserved_memory_region_start, count * sizeof(soc_reserved_region_t));
+ #endif
+ 
++    /* Filter out zero-length regions before sorting (workaround for ESP-IDF bug) */
++    size_t valid_count = 0;
++    for (size_t i = 0; i < count; i++) {
++        if (reserved[i].start < reserved[i].end) {
++            if (valid_count != i) {
++                reserved[valid_count] = reserved[i];
++            }
++            valid_count++;
++        } else {
++            ESP_EARLY_LOGW(TAG, "Filtering out zero-length reserved region: 0x%08x - 0x%08x",
++                           reserved[i].start, reserved[i].end);
++        }
++    }
++    count = valid_count;
++
+     /* Sort by starting address */
+     qsort(reserved, count, sizeof(soc_reserved_region_t), s_compare_reserved_regions);
+ 
