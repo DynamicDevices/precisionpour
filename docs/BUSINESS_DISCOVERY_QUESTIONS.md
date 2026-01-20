@@ -59,6 +59,7 @@ Use this document to align on product intent, constraints, and decisions. Keep a
 
 - **Initial deployment type**: festivals/events / pubs / other:
 - **Why this wedge works** (distribution, ROI, urgency, ease of install):
+- **Target market release MVP**: what is the smallest “real” release we can pilot with paying users?
 
 ### Pricing options to validate
 
@@ -80,6 +81,13 @@ Use this document to align on product intent, constraints, and decisions. Keep a
 
 ## 5) System Boundary & Hardware Roadmap
 
+### Technology readiness (current state)
+
+- **Firmware**: what exists today (features, stability, known gaps)?
+- **Hardware**: what exists today (prototype vs custom PCB plan)?
+- **Enclosures & ancillaries**: what exists today (food-safe parts, fittings, tubing, cleaning, gas handling)?
+- **Cloud/web applications**: what exists today (portal, payments, device auth, dashboards)?
+
 ### Current prototype
 
 - **Prototype platform**: PerfectDraft + ESP32 (touch UI + flow sensor + solenoid)
@@ -91,6 +99,8 @@ Use this document to align on product intent, constraints, and decisions. Keep a
 - **What must change for events** (ruggedization, install, serviceability, security, cost):
 - **One-tap-per-device vs multi-tap**:
 - **Any expected “hub” component**:
+- **Beverage scope roadmap**: beer first / soft drinks / spirits
+  - If expanding, what changes (viscosity, carbonation, safety, licensing, brand strategy e.g. separate name)?
 
 ### Deployment formats to consider (pick likely paths)
 
@@ -104,6 +114,7 @@ Use this document to align on product intent, constraints, and decisions. Keep a
 - **Install model**: our team / partner installer / venue staff
 - **Keg/cask changeover**: steps, time, who performs, what can go wrong
 - **Gas/line compatibility**: CO₂/regulators, connectors, any adapters needed
+- **Industry-standard fittings**: are there generic pipe/fitting standards we can rely on? what must we support?
 - **Cleaning/line maintenance**: required cadence, procedure, and who owns it
 - **On-site troubleshooting**: what a non-technical operator can fix in <5 minutes
 - **Spare parts**: what must be on hand at events (valve, sensor, PSU, tubing, etc.)
@@ -128,6 +139,9 @@ Use this document to align on product intent, constraints, and decisions. Keep a
 - **Operator dashboard must-have**:
 - **Reconciliation** (money in vs ml out):
 - **Audit trail expectations**:
+- **“Run-out” monitoring** (standalone): poured vs remaining, current usage rate, predicted depletion alerts (“~15 mins left”)
+- **Keg/cask low detection**: how do we detect “running low” to avoid foam pours and unfair charging?
+- **Dual vessel / switchover**: do we support dual kegs/vessels for easy swapover? how is switchover handled?
 
 ### Stakeholder interviews (external feedback we must collect)
 
@@ -142,7 +156,62 @@ Capture objections and what evidence would change minds.
 | Regulator / compliance advisor |  |  |  |
 | Payments provider / risk |  |  |  |
 
-## 7) Onboarding & Payment Flow
+## 7) Commercial Model, Unit Economics, and Rollout
+
+### Unit economics / ROI
+
+- **Who pays**: venue / festival operator / brand / distributor / other:
+- **How they justify it** (staff savings, throughput uplift, sales uplift, reduced waste):
+- **Target hardware cost per tap**:
+- **Target gross margin**:
+- **Target payback period** (months):
+
+### Commercial / rollout model
+
+- **Model**: sell hardware / lease / rent-per-event / revenue share / other:
+- **Who owns hardware on-site**:
+- **Who supplies/owns the beer** (venue vs distributor vs us):
+- **Rollout plan**: pilots → paid pilots → scale (what gates each step):
+- **Costed development plan**: do we have a costed plan to reach “series release” level? scope/timeline/budget:
+- **Funding routes**: which routes have been explored (bootstrapping, angels, grants, strategic partners, venture, revenue-share)?
+
+### Liability & insurance
+
+- **Over-serving / intoxication liability**: who is responsible and how is it controlled?
+- **Underage service**: what controls are required (wristbands, ID checks, supervised mode)?
+- **Spills / injury / equipment damage**: who is liable?
+- **Insurance requirements**: what coverage do operators expect/require?
+
+### Identity & access control
+
+- **Account required?** yes/no (guest checkout allowed?)
+- **Age verification**: required? where in flow? (web checkout, wristband issuance, on-device)
+- **Access modes**: QR only / RFID wristband / staff-issued sessions / other:
+
+### Venue operations (day-to-day)
+
+- **Open/close routine**: priming, cleaning, reconciliation, resets
+- **Peak-time staffing model**: staff required to supervise N taps
+- **Incident handling**: what staff do when a tap faults, user disputes, payment issues
+
+### Customer support & disputes
+
+- **Refund policy**: when, how, who authorizes (self-serve vs staff override)
+- **Dispute handling** (“paid but stopped early”): required evidence (logs, ml count, timestamps)
+- **Support channels**: on-device help, web help, operator hotline, other:
+
+### Brand partnerships
+
+- **Strategy**: brewer-sponsored taps / venue-owned generic infrastructure / hybrid:
+- **Requirements**: branding on-device, promo pricing, data sharing, co-marketing:
+- **Hospitality partners**: any identified partners (venues, operators, suppliers)? who can introduce us (e.g., Manchester contacts)?
+
+### App strategy
+
+- **Do we plan a mobile app?** yes/no
+- If yes: **who uses it** (operators vs end-users), and **why** (provisioning, payments, support, monitoring)?
+
+## 8) Onboarding & Payment Flow
 
 ### Intended end-user flow
 
@@ -169,7 +238,7 @@ Capture objections and what evidence would change minds.
 - **Preferred**: Improv BLE via custom mobile app
 - **Fallback** (if BLE unavailable):
 
-## 8) Reliability, Safety, and Fail-Safes
+## 9) Reliability, Safety, and Fail-Safes
 
 ### Availability expectations
 
@@ -193,7 +262,7 @@ For each scenario, define **what the device does**, **what the user sees**, and 
 - **Power brownout / reboot mid-pour**:
 - **Flow sensor fault mid-pour**:
 
-## 9) Fraud / Tamper / Threat Model (Practical)
+## 10) Fraud / Tamper / Threat Model (Practical)
 
 ### What we must defend against
 
@@ -218,7 +287,7 @@ For each scenario, define **what the device does**, **what the user sees**, and 
 - **Signing/encryption requirements**:
 - **Key management** (factory vs field provisioning):
 
-## 10) Calibration & Drift
+## 11) Calibration & Drift
 
 ### Calibration plan
 
@@ -232,7 +301,7 @@ For each scenario, define **what the device does**, **what the user sees**, and 
 - **How calibration is recorded**:
 - **What the operator can verify**:
 
-## 11) Compliance / Regulatory (Decisions Needed)
+## 12) Compliance / Regulatory (Decisions Needed)
 
 ### Legal metrology / “weights & measures”
 
@@ -252,7 +321,13 @@ For each scenario, define **what the device does**, **what the user sees**, and 
 
 - Requirements:
 
-## 12) Open Questions & Next Experiments
+## 13) Open Questions & Next Experiments
+
+## 14) IP (Intellectual Property)
+
+- **Identified IP**: what do we believe is protectable/defensible (hardware design, flow control/measurement, UX, backend, brand)?
+- **Status**: none yet / provisional filed / patent filed / trademark filed / trade secrets
+- **Ownership**: who owns contributions (company/contractors) and what assignments are needed?
 
 Add the next smallest experiment that reduces risk.
 
