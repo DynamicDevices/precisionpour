@@ -10,6 +10,25 @@
 
 static const char* TAG = "RLE";
 
+// Small cache to avoid a single shared decompressed buffer/descriptor being reused
+// across multiple images (which can cause images to disappear when another image is
+// decompressed later). Keep a few decompressed images resident; sizes are small.
+typedef struct {
+    const lv_img_dsc_t* key;          // Pointer to the *compressed* image descriptor
+    size_t uncompressed_size;         // Expected uncompressed size
+    uint8_t* decompressed_buffer;     // Owned buffer (malloc'd)
+    size_t buffer_size;               // Allocated size
+    lv_img_dsc_t decompressed_img;    // Descriptor pointing at decompressed_buffer
+    uint32_t use_counter;             // For simple LRU
+    bool valid;
+} rle_cache_entry_t;
+
+static uint32_t s_rle_cache_counter = 0;
+#ifndef RLE_CACHE_MAX_IMAGES
+#define RLE_CACHE_MAX_IMAGES 4
+#endif
+static rle_cache_entry_t s_rle_cache[RLE_CACHE_MAX_IMAGES] = {};
+
 int rle_decompress(const uint8_t* compressed_data, size_t compressed_size,
                    uint8_t* output_buffer, size_t output_size) {
     if (compressed_data == NULL || output_buffer == NULL) {
@@ -85,26 +104,43 @@ const lv_img_dsc_t* rle_decompress_image(const lv_img_dsc_t* compressed_img, siz
         return NULL;
     }
     
-    // Allocate buffer dynamically based on actual image size
-    // This avoids wasting RAM for large static buffers
-    // For the logo (259x40), this is only 20,720 bytes instead of 153,600 bytes
-    static uint8_t* decompressed_buffer = NULL;
-    static size_t buffer_size = 0;
-    static lv_img_dsc_t decompressed_img;
-    
-    // Reallocate buffer if needed (grow only, never shrink to avoid fragmentation)
-    if (decompressed_buffer == NULL || buffer_size < uncompressed_size) {
-        if (decompressed_buffer != NULL) {
-            free(decompressed_buffer);
+    // Try cache hit first
+    s_rle_cache_counter++;
+    for (int i = 0; i < RLE_CACHE_MAX_IMAGES; i++) {
+        if (s_rle_cache[i].valid &&
+            s_rle_cache[i].key == compressed_img &&
+            s_rle_cache[i].uncompressed_size == uncompressed_size) {
+            s_rle_cache[i].use_counter = s_rle_cache_counter;
+            return &s_rle_cache[i].decompressed_img;
         }
-        decompressed_buffer = (uint8_t*)malloc(uncompressed_size);
-        if (decompressed_buffer == NULL) {
-            ESP_LOGE(TAG, "Failed to allocate %zu bytes for decompressed image", uncompressed_size);
-            return NULL;
+    }
+
+    // Choose a cache slot: empty or least-recently-used
+    int slot = -1;
+    uint32_t lru = 0xFFFFFFFFu;
+    for (int i = 0; i < RLE_CACHE_MAX_IMAGES; i++) {
+        if (!s_rle_cache[i].valid) {
+            slot = i;
+            break;
         }
-        buffer_size = uncompressed_size;
-        ESP_LOGI(TAG, "Allocated %zu bytes (%.1f KB) for decompressed image buffer", 
-                 uncompressed_size, uncompressed_size / 1024.0);
+        if (s_rle_cache[i].use_counter < lru) {
+            lru = s_rle_cache[i].use_counter;
+            slot = i;
+        }
+    }
+
+    // Free any previous buffer in this slot
+    if (slot >= 0 && s_rle_cache[slot].decompressed_buffer != NULL) {
+        free(s_rle_cache[slot].decompressed_buffer);
+        s_rle_cache[slot].decompressed_buffer = NULL;
+        s_rle_cache[slot].buffer_size = 0;
+    }
+
+    // Allocate buffer for this image
+    uint8_t* decompressed_buffer = (uint8_t*)malloc(uncompressed_size);
+    if (decompressed_buffer == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate %zu bytes for decompressed image", uncompressed_size);
+        return NULL;
     }
     
     // Decompress the data
@@ -117,24 +153,40 @@ const lv_img_dsc_t* rle_decompress_image(const lv_img_dsc_t* compressed_img, siz
     
     if (result != 0) {
         ESP_LOGE(TAG, "Failed to decompress image data");
+        free(decompressed_buffer);
         return NULL;
     }
     
-    // Create decompressed image descriptor
-    decompressed_img.header.cf = compressed_img->header.cf;
-    decompressed_img.header.w = compressed_img->header.w;
-    decompressed_img.header.h = compressed_img->header.h;
-    decompressed_img.header.always_zero = 0;
-    decompressed_img.header.reserved = 0;
-    decompressed_img.data_size = uncompressed_size;
-    decompressed_img.data = decompressed_buffer;
+    // Populate cache entry
+    if (slot < 0) {
+        // Should never happen, but be safe
+        free(decompressed_buffer);
+        ESP_LOGE(TAG, "No cache slot available");
+        return NULL;
+    }
+
+    s_rle_cache[slot].key = compressed_img;
+    s_rle_cache[slot].uncompressed_size = uncompressed_size;
+    s_rle_cache[slot].decompressed_buffer = decompressed_buffer;
+    s_rle_cache[slot].buffer_size = uncompressed_size;
+    s_rle_cache[slot].use_counter = s_rle_cache_counter;
+    s_rle_cache[slot].valid = true;
+
+    // Create decompressed image descriptor (per-slot, stable)
+    s_rle_cache[slot].decompressed_img.header.cf = compressed_img->header.cf;
+    s_rle_cache[slot].decompressed_img.header.w = compressed_img->header.w;
+    s_rle_cache[slot].decompressed_img.header.h = compressed_img->header.h;
+    s_rle_cache[slot].decompressed_img.header.always_zero = 0;
+    s_rle_cache[slot].decompressed_img.header.reserved = 0;
+    s_rle_cache[slot].decompressed_img.data_size = uncompressed_size;
+    s_rle_cache[slot].decompressed_img.data = decompressed_buffer;
     
     ESP_LOGI(TAG, "Decompressed image: %zu bytes -> %zu bytes (%.1f%% reduction, %.1f KB RAM)",
              compressed_img->data_size, uncompressed_size,
              (1.0 - (float)compressed_img->data_size / uncompressed_size) * 100.0,
              uncompressed_size / 1024.0);
     
-    return &decompressed_img;
+    return &s_rle_cache[slot].decompressed_img;
 }
 
 // Structure to hold streaming decompression state

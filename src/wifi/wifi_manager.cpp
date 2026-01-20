@@ -275,6 +275,8 @@ bool wifi_manager_init() {
         ESP_LOGI(TAG, "[WiFi] Starting Improv WiFi provisioning mode...");
         wifi_manager_start_provisioning();
         return false;  // Not connected yet, provisioning in progress
+    } else {
+        ESP_LOGI(TAG, "[WiFi] Improv WiFi enabled (not autostarting); will start only if WiFi connection fails");
     }
     #endif
     

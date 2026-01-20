@@ -394,6 +394,22 @@ menu "PrecisionPour Configuration"
             help
                 Debug output level (0=none, 5=verbose)
 
+        config DEBUG_POURING_ICON_OFFSET_X
+            int "Pouring Icon X Offset (pixels, Debug)"
+            range -40 40
+            default 0
+            help
+                Adjust the pouring icon horizontally for optical centering.
+                Positive values move the icon right; negative values move it left.
+
+        config DEBUG_START_ON_POURING
+            bool "Start on Pouring Screen at boot (Debug)"
+            default n
+            help
+                When enabled, after the splash screen the device will boot directly
+                into the pouring screen with test parameters. Useful for iterating
+                on the pouring UI without needing the QR/payment flow.
+
         config DEBUG_QR_TAP_TO_POUR
             bool "Enable QR Code Tap to Pour (Debug)"
             default n

@@ -316,6 +316,12 @@ Examples:
         type=str,
         help='Output C header file path (default: include/images/precision_pour_logo.h)'
     )
+    parser.add_argument(
+        '--var-name',
+        type=str,
+        default="precision_pour_logo",
+        help='C variable name for the LVGL image descriptor (default: precision_pour_logo)'
+    )
     
     args = parser.parse_args()
     
@@ -336,6 +342,7 @@ Examples:
     convert_to_lvgl_rgb565(
         input_image, 
         output_header,
+        var_name=args.var_name,
         trim_borders=not args.no_trim,
         use_rle=args.rle
     )

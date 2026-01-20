@@ -344,7 +344,16 @@ extern "C" void app_main() {
     ESP_LOGI(TAG_MAIN, "[Setup] About to initialize UI...");
     ESP_LOGI(TAG_MAIN, "[Setup] Initializing screen manager...");
     screen_manager_init();
-    screen_manager_show_qr_code();  // Show QR code screen after splash
+    if (DEBUG_START_ON_POURING) {
+        ESP_LOGI(TAG_MAIN, "[Setup] DEBUG_START_ON_POURING enabled - booting into pouring screen");
+        const char* test_unique_id = "debug_boot_order_001";
+        float test_cost_per_ml = 0.005f;  // £0.005/ml = £5.00/liter
+        int test_max_ml = 568;            // 1 pint (UK) for beer-focused UI testing
+        const char* test_currency = CURRENCY_SYMBOL;
+        screen_manager_show_pouring(test_unique_id, test_cost_per_ml, test_max_ml, test_currency);
+    } else {
+        screen_manager_show_qr_code();  // Show QR code screen after splash
+    }
     ESP_LOGI(TAG_MAIN, "[Setup] Screen manager initialized - DONE");
     
     // Finalize (100% - just for logging, splashscreen is already gone)

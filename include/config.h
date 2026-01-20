@@ -108,6 +108,18 @@
     #define ERROR_RESET_DELAY_MS CONFIG_ERROR_RESET_DELAY_MS
     
     // Development Options
+    #ifdef CONFIG_DEBUG_START_ON_POURING
+        #define DEBUG_START_ON_POURING CONFIG_DEBUG_START_ON_POURING
+    #else
+        #define DEBUG_START_ON_POURING 0
+    #endif
+
+    #ifdef CONFIG_DEBUG_POURING_ICON_OFFSET_X
+        #define DEBUG_POURING_ICON_OFFSET_X CONFIG_DEBUG_POURING_ICON_OFFSET_X
+    #else
+        #define DEBUG_POURING_ICON_OFFSET_X 0
+    #endif
+
     #ifdef CONFIG_DEBUG_QR_TAP_TO_POUR
         #define DEBUG_QR_TAP_TO_POUR CONFIG_DEBUG_QR_TAP_TO_POUR
     #else
@@ -216,6 +228,8 @@
     #define FINISHED_SCREEN_TIMEOUT_SEC 5  // Default timeout in seconds before returning to QR code screen
 
     // Development Options
+    #define DEBUG_START_ON_POURING 0  // Set to 1 to boot directly into pouring screen for debugging
+    #define DEBUG_POURING_ICON_OFFSET_X 0  // Horizontal offset (px) for optical centering of the pouring icon
     #define DEBUG_QR_TAP_TO_POUR 0  // Set to 1 to enable QR code tap to pour for debugging
     #define DEBUG_POURING_TAP_TO_FINISHED 0  // Set to 1 to enable pouring screen tap to finished for debugging
     #define DEBUG_FINISHED_TAP_TO_QR 0  // Set to 1 to enable finished screen tap to QR code for debugging

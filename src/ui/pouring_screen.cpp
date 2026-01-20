@@ -19,6 +19,8 @@
 #include "ui/base_screen.h"
 #include "ui/screen_manager.h"
 #include "flow/flow_meter.h"
+#include "images/pouring_illustration.h"
+#include "utils/rle_decompress.h"
 
 // System/Standard library headers
 #include <lvgl.h>
@@ -37,14 +39,16 @@
 #define COLOR_GOLDEN lv_color_hex(0xFFD700) // Golden yellow
 
 // UI objects
-static lv_obj_t* flow_rate_label = NULL;
+static lv_obj_t* root = NULL;
+static lv_obj_t* title_label = NULL;
+static lv_obj_t* illustration_img_obj = NULL;
+static lv_obj_t* budget_left_value = NULL;
+static lv_obj_t* progress_bar = NULL;
+static lv_obj_t* progress_label = NULL;
 static lv_obj_t* flow_rate_value = NULL;
-static lv_obj_t* volume_label = NULL;
-static lv_obj_t* volume_value = NULL;
-static lv_obj_t* cost_per_unit_label = NULL;
-static lv_obj_t* cost_per_unit_value = NULL;
-static lv_obj_t* total_cost_label = NULL;
-static lv_obj_t* total_cost_value = NULL;
+static lv_obj_t* unit_cost_value = NULL;
+static lv_obj_t* bottom_summary_label = NULL;
+static lv_obj_t* action_hint_label = NULL;
 
 // Pouring parameters (from MQTT "paid" command)
 static char pour_unique_id[64] = {0};
@@ -52,6 +56,7 @@ static float cost_per_ml = 0.0;
 static int max_ml = 0;
 static bool pour_active = false;
 static char currency_symbol[8] = {0};
+static float max_budget_cost = 0.0f;  // Derived from cost_per_ml * max_ml
 
 // Callback function to switch back to QR code screen
 static void (*screen_switch_callback)(void) = NULL;
@@ -84,83 +89,57 @@ void pouring_screen_init() {
         return;
     }
     
-    // Create pouring information labels in content area
-    // Flow Rate
-    flow_rate_label = lv_label_create(content_area);
-    if (flow_rate_label != NULL) {
-        lv_label_set_text(flow_rate_label, "Flow Rate:");
-        lv_obj_set_style_text_color(flow_rate_label, COLOR_TEXT, 0);
-        lv_obj_set_style_text_font(flow_rate_label, &lv_font_montserrat_14, 0);
-        lv_obj_align(flow_rate_label, LV_ALIGN_TOP_LEFT, 10, 10);
+    // Root container for pouring screen (fits inside base_screen content area)
+    root = lv_obj_create(content_area);
+    if (root == NULL) {
+        ESP_LOGE(TAG, "[Pouring Screen] ERROR: Failed to create root container!");
+        return;
     }
-    
-    flow_rate_value = lv_label_create(content_area);
-    if (flow_rate_value != NULL) {
-        lv_label_set_text(flow_rate_value, "0.00 mL/min");
-        lv_obj_set_style_text_color(flow_rate_value, COLOR_GOLDEN, 0);
-        lv_obj_set_style_text_font(flow_rate_value, &lv_font_montserrat_14, 0);
-        lv_obj_align(flow_rate_value, LV_ALIGN_TOP_LEFT, 10, 30);
-    }
-    
-    // Volume
-    volume_label = lv_label_create(content_area);
-    if (volume_label != NULL) {
-        lv_label_set_text(volume_label, "Volume:");
-        lv_obj_set_style_text_color(volume_label, COLOR_TEXT, 0);
-        lv_obj_set_style_text_font(volume_label, &lv_font_montserrat_14, 0);
-        lv_obj_align(volume_label, LV_ALIGN_TOP_LEFT, 10, 60);
-    }
-    
-    volume_value = lv_label_create(content_area);
-    if (volume_value != NULL) {
-        lv_label_set_text(volume_value, "0 ml");
-        lv_obj_set_style_text_color(volume_value, COLOR_GOLDEN, 0);
-        lv_obj_set_style_text_font(volume_value, &lv_font_montserrat_14, 0);
-        lv_obj_align(volume_value, LV_ALIGN_TOP_LEFT, 10, 80);
-    }
-    
-    // Cost per Unit (per ml)
-    cost_per_unit_label = lv_label_create(content_area);
-    if (cost_per_unit_label != NULL) {
-        lv_label_set_text(cost_per_unit_label, "Cost per ml:");
-        lv_obj_set_style_text_color(cost_per_unit_label, COLOR_TEXT, 0);
-        lv_obj_set_style_text_font(cost_per_unit_label, &lv_font_montserrat_14, 0);
-        lv_obj_align(cost_per_unit_label, LV_ALIGN_TOP_RIGHT, -10, 10);
-    }
-    
-    cost_per_unit_value = lv_label_create(content_area);
-    if (cost_per_unit_value != NULL) {
-        char init_str[32];
+    lv_obj_set_size(root, lv_obj_get_width(content_area), lv_obj_get_height(content_area));
+    lv_obj_align(root, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_set_style_bg_opa(root, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(root, 0, 0);
+    lv_obj_set_style_pad_all(root, 0, 0);
+    lv_obj_clear_flag(root, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(root, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(root, pouring_screen_touch_cb, LV_EVENT_CLICKED, NULL);
+
+    // Bottom summary: poured + cost so far (place on the main screen so it's truly at the bottom)
+    // Put it between the WiFi/data icons.
+    bottom_summary_label = lv_label_create(lv_scr_act());
+    {
+        char init_str[48];
         const char* symbol = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
-        snprintf(init_str, sizeof(init_str), "%s0.0000", symbol);
-        lv_label_set_text(cost_per_unit_value, init_str);
-        lv_obj_set_style_text_color(cost_per_unit_value, COLOR_GOLDEN, 0);
-        lv_obj_set_style_text_font(cost_per_unit_value, &lv_font_montserrat_14, 0);
-        lv_obj_align(cost_per_unit_value, LV_ALIGN_TOP_RIGHT, -10, 30);
+        snprintf(init_str, sizeof(init_str), "0 ml • %s0.00", symbol);
+        lv_label_set_text(bottom_summary_label, init_str);
     }
-    
-    // Total Cost
-    total_cost_label = lv_label_create(content_area);
-    if (total_cost_label != NULL) {
-        lv_label_set_text(total_cost_label, "Total Cost:");
-        lv_obj_set_style_text_color(total_cost_label, COLOR_TEXT, 0);
-        lv_obj_set_style_text_font(total_cost_label, &lv_font_montserrat_14, 0);
-        lv_obj_align(total_cost_label, LV_ALIGN_TOP_RIGHT, -10, 60);
+    lv_obj_set_style_text_color(bottom_summary_label, COLOR_GOLDEN, 0);
+    lv_obj_set_style_text_font(bottom_summary_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_align(bottom_summary_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_clear_flag(bottom_summary_label, LV_OBJ_FLAG_CLICKABLE);
+    lv_label_set_long_mode(bottom_summary_label, LV_LABEL_LONG_CLIP);
+    lv_obj_set_width(bottom_summary_label, DISPLAY_WIDTH - 2 * (BASE_SCREEN_ICON_SIZE + BASE_SCREEN_ICON_MARGIN + 8));
+    lv_obj_align(bottom_summary_label, LV_ALIGN_BOTTOM_MID, 0, -2);
+
+    // Illustration (beer icon) centered in remaining space above summary
+    illustration_img_obj = lv_img_create(root);
+    if (illustration_img_obj != NULL) {
+        const lv_img_dsc_t* img = rle_get_image(
+            &pouring_illustration,
+            POURING_ILLUSTRATION_IS_COMPRESSED,
+            POURING_ILLUSTRATION_IS_COMPRESSED ? POURING_ILLUSTRATION_UNCOMPRESSED_SIZE : pouring_illustration.data_size
+        );
+        if (img != NULL) {
+            lv_img_set_src(illustration_img_obj, img);
+            // Centered in the content area (no manual offset)
+            lv_obj_align(illustration_img_obj, LV_ALIGN_CENTER, DEBUG_POURING_ICON_OFFSET_X, 0);
+        } else {
+            lv_obj_add_flag(illustration_img_obj, LV_OBJ_FLAG_HIDDEN);
+        }
     }
-    
-    total_cost_value = lv_label_create(content_area);
-    if (total_cost_value != NULL) {
-        char init_str[32];
-        const char* symbol = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
-        snprintf(init_str, sizeof(init_str), "%s0.00", symbol);
-        lv_label_set_text(total_cost_value, init_str);
-        lv_obj_set_style_text_color(total_cost_value, COLOR_GOLDEN, 0);
-        lv_obj_set_style_text_font(total_cost_value, &lv_font_montserrat_14, 0);
-        lv_obj_align(total_cost_value, LV_ALIGN_TOP_RIGHT, -10, 80);
-    }
-    
-    // Add touch event handler to screen - tap anywhere to return to QR code screen
-    lv_obj_add_event_cb(lv_scr_act(), pouring_screen_touch_cb, LV_EVENT_CLICKED, NULL);
+
+    // Keep screen interactive (tap handling stays the same), but don't show extra helper text for now
+    action_hint_label = NULL;
     
     // Force refresh
     lv_timer_handler();
@@ -226,47 +205,18 @@ void pouring_screen_update() {
     
     // Update base screen (WiFi and data icons)
     base_screen_update();
-    
-    // Update flow rate display (convert L/min to mL/min)
-    if (flow_rate_value != NULL) {
-        float flow_rate_lpm = flow_meter_get_flow_rate_lpm();
-        float flow_rate_mlpm = flow_rate_lpm * 1000.0;  // Convert liters to milliliters
-        char flow_str[32];
-        snprintf(flow_str, sizeof(flow_str), "%.2f mL/min", flow_rate_mlpm);
-        lv_label_set_text(flow_rate_value, flow_str);
-    }
-    
-    // Update volume display (convert liters to milliliters)
-    if (volume_value != NULL) {
-        float volume_liters = flow_meter_get_total_volume_liters();
-        float volume_ml = volume_liters * 1000.0;  // Convert liters to milliliters
-        char volume_str[32];
-        snprintf(volume_str, sizeof(volume_str), "%.0f ml", volume_ml);
-        lv_label_set_text(volume_value, volume_str);
-    }
-    
-    // Update cost per ml display
-    if (cost_per_unit_value != NULL && pour_active) {
-        char cost_str[32];
+
+    // Read sensors once per update
+    const float volume_liters = flow_meter_get_total_volume_liters();
+    const float volume_ml = volume_liters * 1000.0f;
+
+    // Bottom summary (ml poured + cost)
+    if (bottom_summary_label != NULL) {
+        char summary_str[64];
         const char* symbol = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
-        snprintf(cost_str, sizeof(cost_str), "%s%.4f", symbol, cost_per_ml);
-        lv_label_set_text(cost_per_unit_value, cost_str);
-    }
-    
-    // Update total cost display (using cost per ml)
-    if (total_cost_value != NULL && pour_active) {
-        float volume_liters = flow_meter_get_total_volume_liters();
-        float volume_ml = volume_liters * 1000.0;  // Convert to ml
-        float total_cost = volume_ml * cost_per_ml;  // Cost = ml * cost_per_ml
-        char cost_str[32];
-        const char* symbol = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
-        snprintf(cost_str, sizeof(cost_str), "%s%.2f", symbol, total_cost);
-        lv_label_set_text(total_cost_value, cost_str);
-        
-        // Check if max ml reached
-        if (volume_ml >= max_ml) {
-            ESP_LOGW(TAG, "[Pouring Screen] Maximum volume reached!");
-        }
+        float total_cost = (pour_active && cost_per_ml > 0.0f) ? (volume_ml * cost_per_ml) : 0.0f;
+        snprintf(summary_str, sizeof(summary_str), "%.0f ml • %s%.2f", volume_ml, symbol, total_cost);
+        lv_label_set_text(bottom_summary_label, summary_str);
     }
 }
 
@@ -276,6 +226,7 @@ void pouring_screen_reset() {
     max_ml = 0;
     pour_unique_id[0] = '\0';
     currency_symbol[0] = '\0';
+    max_budget_cost = 0.0f;
     
     // Reset flow meter volume
     flow_meter_reset_volume();
@@ -299,6 +250,15 @@ void pouring_screen_set_params(const char* unique_id, float cost_per_ml_param, i
     }
     
     pour_active = true;
+    max_budget_cost = (max_ml > 0 && cost_per_ml > 0.0f) ? (cost_per_ml * (float)max_ml) : 0.0f;
+
+    // If UI is already constructed, refresh the bottom summary immediately
+    if (bottom_summary_label != NULL) {
+        char init_str[64];
+        const char* symbol = (strlen(currency_symbol) > 0) ? currency_symbol : CURRENCY_SYMBOL;
+        snprintf(init_str, sizeof(init_str), "0 ml • %s0.00", symbol);
+        lv_label_set_text(bottom_summary_label, init_str);
+    }
     
     ESP_LOGI(TAG, "[Pouring Screen] Updated pour parameters:");
     ESP_LOGI(TAG, "  ID: %s", pour_unique_id);
@@ -342,47 +302,24 @@ float pouring_screen_get_cost_per_ml() {
 void pouring_screen_cleanup() {
     // Set inactive first to prevent updates during cleanup
     pouring_screen_active = false;
-    
-    // Clean up labels
-    if (flow_rate_label != NULL) {
-        lv_obj_del(flow_rate_label);
-        flow_rate_label = NULL;
+
+    // If we created a label on lv_scr_act(), delete it explicitly (base_screen_cleanup won't touch it)
+    if (bottom_summary_label != NULL) {
+        lv_obj_del(bottom_summary_label);
+        bottom_summary_label = NULL;
     }
-    
-    if (flow_rate_value != NULL) {
-        lv_obj_del(flow_rate_value);
-        flow_rate_value = NULL;
-    }
-    
-    if (volume_label != NULL) {
-        lv_obj_del(volume_label);
-        volume_label = NULL;
-    }
-    
-    if (volume_value != NULL) {
-        lv_obj_del(volume_value);
-        volume_value = NULL;
-    }
-    
-    if (cost_per_unit_label != NULL) {
-        lv_obj_del(cost_per_unit_label);
-        cost_per_unit_label = NULL;
-    }
-    
-    if (cost_per_unit_value != NULL) {
-        lv_obj_del(cost_per_unit_value);
-        cost_per_unit_value = NULL;
-    }
-    
-    if (total_cost_label != NULL) {
-        lv_obj_del(total_cost_label);
-        total_cost_label = NULL;
-    }
-    
-    if (total_cost_value != NULL) {
-        lv_obj_del(total_cost_value);
-        total_cost_value = NULL;
-    }
+
+    // Content is owned by base_screen content_area; deleting it cleans up children.
+    // We just NULL out our pointers.
+    root = NULL;
+    title_label = NULL;
+    illustration_img_obj = NULL;
+    budget_left_value = NULL;
+    progress_bar = NULL;
+    progress_label = NULL;
+    flow_rate_value = NULL;
+    unit_cost_value = NULL;
+    action_hint_label = NULL;
     
     // Clean up base screen (content area only, shared components persist)
     base_screen_cleanup();
